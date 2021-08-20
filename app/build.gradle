@@ -117,7 +117,7 @@ android {
     productFlavors {
         TSE {
 	dimension "version"
-	applicationId "com.skyrimus.serioussam.tse"
+	applicationId "com.sergioroprado.serioussam.tse"
 	versionNameSuffix "-TSE"
 	buildConfigField('String','home','"SeriousSamTSE"')
 	sourceSets {
@@ -128,7 +128,7 @@ android {
 	}
         TFE {
 	dimension "version"
-	applicationId "com.skyrimus.serioussam.tfe"
+	applicationId "com.sergioroprado.serioussam.tfe"
 	versionNameSuffix "-TFE"
 	buildConfigField('String','home','"SeriousSamTFE"')
 	sourceSets {
