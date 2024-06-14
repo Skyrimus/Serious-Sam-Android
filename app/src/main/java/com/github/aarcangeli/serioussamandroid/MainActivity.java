@@ -1275,7 +1275,7 @@ public class MainActivity extends Activity {
 					isTracking = false;
 					break;
 				case MotionEvent.ACTION_MOVE:
-					if (isTracking) {
+					if (isTracking && !(v instanceof ButtonView)) {
 						float rawX = event.getX();
 						float rawY = event.getY();
 						shiftAxisValue(AXIS_LOOK_LR, -Utils.convertPixelsToDp(rawX - lastX, MainActivity.this) * MULT_VIEW_TRACKER * aimViewSensibility);
