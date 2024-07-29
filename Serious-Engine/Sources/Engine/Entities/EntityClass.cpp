@@ -129,8 +129,7 @@ void CEntityClass::CheckClassProperties(void)
           CTString strMsg;
           strMsg.PrintF("No two properties may have same id!\nCLASS 1: %s\nCLASS 2: %s\nPropCycleID: %d\nID 1: %lu\nID 2: %lu\nOffset: %d\nType 1: %d\nType 2: %d", pdecDLLClass1->dec_strName, pdecDLLClass2->dec_strName, iProperty1, epProperty1.ep_ulID, epProperty2.ep_ulID, epProperty2.ep_slOffset, epProperty1.ep_eptType, epProperty2.ep_eptType);
           // the two properties must not have same id unless they are same property
-          ASSERTMSG(&epProperty1==&epProperty2 || epProperty1.ep_ulID!=epProperty2.ep_ulID,
-            strMsg.str_String);
+          ASSERT(&epProperty1==&epProperty2 || epProperty1.ep_ulID!=epProperty2.ep_ulID);
         }
       }
     }

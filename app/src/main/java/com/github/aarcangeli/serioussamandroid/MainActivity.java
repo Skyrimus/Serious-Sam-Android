@@ -1197,7 +1197,7 @@ public class MainActivity extends Activity {
 	public void syncOptions() {
 		SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
 		useGyroscope = preferences.getBoolean("use_gyroscope", false);
-		showTouchController = preferences.getString("showTouchController", "Auto");
+		showTouchController = preferences.getString("showTouchController", "Yes");
 		gyroSensibility = preferences.getInt("gyro_sensibility", 50) / 100.f;
 		aimViewSensibility = preferences.getInt("aimView_sensibility", 100) / 100.f;
 		ctrlAimSensibility = preferences.getInt("ctrl_aimSensibility", 100) / 100.f;

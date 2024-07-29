@@ -10,6 +10,7 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <android/log.h>
+#include "mouse.h"
 
 void processInputs();
 
@@ -140,6 +141,13 @@ Java_com_github_aarcangeli_serioussamandroid_MainActivity_nDispatchKeyEvent(JNIE
 #define BTN_CASE(cod, name) case cod: name = isPressed != 0; break;
   pthread_mutex_lock(&g_mySeriousMutex);
   switch(key) {
+	// Keyboard
+	BTN_CASE(KEYCODE_W, g_cb.g_IncomingControls.bMoveForward)
+	BTN_CASE(KEYCODE_A, g_cb.g_IncomingControls.bMoveLeft)
+	BTN_CASE(KEYCODE_S, g_cb.g_IncomingControls.bMoveBackward)
+	BTN_CASE(KEYCODE_D, g_cb.g_IncomingControls.bMoveRight)
+	BTN_CASE(KEYCODE_R, g_cb.g_IncomingControls.bReload)
+	BTN_CASE(KEYCODE_SPACE, g_cb.g_IncomingControls.bMoveUp)
     // Xbox 360
     BTN_CASE(KEYCODE_BUTTON_R1, g_cb.g_IncomingControls.bFire)
     BTN_CASE(KEYCODE_BUTTON_R2, g_cb.g_IncomingControls.bUse)
@@ -201,6 +209,7 @@ void syncSeriousThreads() {
   while (true) {
     // get parameters with mutex
     pthread_mutex_lock(&g_mySeriousMutex);
+
     bool running = g_gameRunning;
     ANativeWindow *window = g_currentWindow;
     bool somethingChanged = false;
@@ -208,7 +217,7 @@ void syncSeriousThreads() {
       somethingChanged = g_somethingChanged;
       g_somethingChanged = false;
     }
-	
+
     CTString cmdToExecute = g_command;
     g_command = "";
 

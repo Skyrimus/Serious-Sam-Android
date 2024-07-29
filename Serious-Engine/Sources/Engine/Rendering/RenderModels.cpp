@@ -55,6 +55,27 @@ static inline FLOAT IntensityAtDistance( FLOAT fFallOff, FLOAT fHotSpot, FLOAT f
   return (fFallOff-fDistance)/(fFallOff-fHotSpot);
 }
 
+BOOL CRenderer::IsVisible(CEntity* penEntity)
+{
+    ASSERT(penEntity != NULL);
+    ASSERT(re_penViewer != NULL);
+    // get ray source and target
+    FLOAT3D castOrigin = re_penViewer->GetPosition();
+    FLOAT3D castTarget = penEntity->GetPosition();
+
+    // cast the ray
+    ASSERT(re_penViewer != NULL);
+    CCastRay crRay(re_penViewer, castOrigin, castTarget);
+    crRay.cr_ttHitModels = CCastRay::TT_NONE;   // check for model collision box
+    crRay.cr_bHitTranslucentPortals = FALSE;
+
+    ASSERT(re_pwoWorld != NULL);
+    re_pwoWorld->CastRay(crRay);
+    //if (crRay.cr_penHit != NULL) CPrintF("Entity %s\n", (const char*) crRay.cr_penHit->GetName().str_String);
+
+    // if hit nothing (no brush) the entity can be seen
+    return (crRay.cr_penHit != NULL);
+};
 
 /* Find lights for one model. */
 BOOL CRenderer::FindModelLights( CEntity &en, const CPlacement3D &plModel,
@@ -765,6 +786,7 @@ void CRenderer::RenderLensFlares(void)
 {
   //CPrintF( "[LENS FLARES] RenderLensFlares started!\n");
   // make sure we have orthographic projection
+  ASSERT(re_pdpDrawPort != NULL);
   re_pdpDrawPort->SetOrtho(); 
   // get count of currently existing flares and time
   INDEX ctFlares   = re_alfiLensFlares.Count();
@@ -786,9 +808,14 @@ void CRenderer::RenderLensFlares(void)
     if( lfi.lfi_ulDrawPortID!=ulDrawPortID && lfi.lfi_iMirrorLevel==0) continue;
     // test if it is still visible
     lfi.lfi_ulFlags &= ~LFF_VISIBLE;
-    if( re_pdpDrawPort->IsPointVisible( (PIX) lfi.lfi_fI, (PIX) lfi.lfi_fJ, lfi.lfi_fOoK, lfi.lfi_iID, lfi.lfi_iMirrorLevel)) {
-      lfi.lfi_ulFlags |= LFF_VISIBLE;
-    }
+   // if (lfi.lfi_plsLightSource != NULL) {
+    //  CEntity* curLight = (CEntity*) lfi.lfi_plsLightSource->ls_penEntity;
+     // if (curLight != NULL) {
+      //  BOOL lightSourceVisible = IsVisible(curLight);
+        //CPrintF("[LENS FLARES] bool = %d \n", lightSourceVisible);
+       // if (lightSourceVisible) lfi.lfi_ulFlags |= LFF_VISIBLE;
+     // }
+    //}
   }}
 
   const TIME tmNow = _pTimer->GetRealTimeTick();
@@ -939,7 +966,7 @@ void CRenderer::RenderLensFlares(void)
         olf.olf_aRotationFactor*fIPositionFactor,
         colBlending);
     }} // for each flare in the lens flare effect
-
+    
     // if screen glare is on
     const CLensFlareType &lft = *lfi.lfi_plsLightSource->ls_plftLensFlare;
     const FLOAT fGlearCompression = lft.lft_fGlareCompression;

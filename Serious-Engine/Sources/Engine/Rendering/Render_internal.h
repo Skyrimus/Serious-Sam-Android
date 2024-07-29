@@ -491,6 +491,8 @@ public:
   /* Render a model. */
   void RenderOneModel( CEntity &en, CModelObject &moModel, const CPlacement3D &plModel,
                        const FLOAT fDistanceFactor, BOOL bRenderShadow, ULONG ulDMFlags);
+					   
+  BOOL IsVisible(CEntity* penEntity);
   /* Render a ska model. */
   void RenderOneSkaModel( CEntity &en, const CPlacement3D &plModel,
                                   const FLOAT fDistanceFactor, BOOL bRenderShadow, ULONG ulDMFlags);

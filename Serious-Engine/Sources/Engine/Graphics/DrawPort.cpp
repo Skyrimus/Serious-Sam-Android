@@ -1049,12 +1049,12 @@ void CDrawPort::RenderLensFlare( CTextureObject *pto, FLOAT fI, FLOAT fJ,
 {
   // check API
   const GfxAPIType eAPI = _pGfx->gl_eCurrentAPI;
-  CPrintF( "[LENS FLARES] HUY\n");
+  //CPrintF( "[LENS FLARES] HUY\n");
   ASSERT( GfxValidApi(eAPI) );
-  CPrintF( "[LENS FLARES] CDrawPort::RenderLensFlare started!\n");
+  //CPrintF( "[LENS FLARES] CDrawPort::RenderLensFlare started!\n");
   // setup rendering mode
-  gfxEnableDepthTest();
-  gfxDisableDepthWrite();
+  //gfxEnableDepthTest();
+  //gfxDisableDepthWrite();
   gfxEnableBlend();
   gfxBlendFunc( GFX_ONE, GFX_ONE);
   gfxDisableAlphaTest();

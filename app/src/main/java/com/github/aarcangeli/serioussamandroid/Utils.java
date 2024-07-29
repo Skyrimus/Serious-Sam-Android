@@ -14,11 +14,13 @@ public class Utils {
 	}
 
 	static boolean isThereControllers() {
-		for (int id : InputDevice.getDeviceIds()) {
-			InputDevice dev = InputDevice.getDevice(id);
+		int[] deviceIds = InputDevice.getDeviceIds();
+		for (int deviceId : deviceIds) {
+			InputDevice dev = InputDevice.getDevice(deviceId);
 			int sources = dev.getSources();
 			if (((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD)
-                || ((sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK)) {
+					|| ((sources & InputDevice.SOURCE_JOYSTICK)
+					== InputDevice.SOURCE_JOYSTICK)) {
 				return true;
 			}
 		}
