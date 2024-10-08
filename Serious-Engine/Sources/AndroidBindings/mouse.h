@@ -43,69 +43,44 @@ int TranslateButton(int state) {
 	}
 }
 
+void simButtonPress(BOOL &action) {
+    action = 1;
+    action = 0;
+}
+
 void changeWeapon(int weapon) {
-	if (weapon == 1) {
-		if (g_cb.g_IncomingControls.bWeaponNext == 0) {
-			g_cb.g_IncomingControls.bWeaponNext = 1;
-		} else {
-			g_cb.g_IncomingControls.bWeaponNext = 1;
-			g_cb.g_IncomingControls.bWeaponNext = 0;
-		}
-		//CPrintF("Button right = %d\n", g_cb.g_IncomingControls.bWeaponNext);
-	} else {
-		if (g_cb.g_IncomingControls.bWeaponPrev == 0) {
-			g_cb.g_IncomingControls.bWeaponPrev = 1;
-		} else {
-			g_cb.g_IncomingControls.bWeaponPrev = 1;
-			g_cb.g_IncomingControls.bWeaponPrev = 0;
-		}
-		//CPrintF("Button left = %d\n", g_cb.g_IncomingControls.bWeaponPrev);
-	}
-	return;
+    if (weapon == 1) {
+        simButtonPress(g_cb.g_IncomingControls.bWeaponNext);
+    } else {
+        simButtonPress(g_cb.g_IncomingControls.bWeaponPrev);
+    }
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_github_aarcangeli_serioussamandroid_MainActivity_nSendMouseNative(JNIEnv *env, jobject obj, jint state, jint action, jfloat scroll) {
-  pthread_mutex_lock(&g_mySeriousMutex);
     int changes;
-	int button;
-    switch(action) {
-        case ACTION_DOWN:
-		    changes = state & ~last_state;
-            button = TranslateButton(changes);	
-			//CPrintF("Mouse button clicked - %d\n", button);
-			if (button == 1) {
-			g_cb.g_IncomingControls.bFire = 1;
-			}
-            break;
-        case ACTION_UP:
-		    changes = state & ~last_state;
-            button = TranslateButton(changes);
-			//CPrintF("Mouse button released\n");
-			if (button == 0) {
-			g_cb.g_IncomingControls.bFire = 0;
-			}
-            break;
-        case ACTION_SCROLL:
-			if (scroll > 0.0f) {
-				//CPrintF("Mouse scrolling up\n");
-				//g_cb.g_IncomingControls.bWeaponNext = 1;
-				changeWeapon(1);
-				} 
+    int button;
 
-			if (scroll < 0.0f) {
-				//CPrintF("Mouse scrolling down\n");
-				//g_cb.g_IncomingControls.bWeaponPrev = 1;
-				changeWeapon(2);	
-				}
+    if (action == ACTION_DOWN || action == ACTION_UP) {
+        changes = state & ~last_state;
+        button = TranslateButton(changes);
 
-				//CPrintF("g_cb.g_IncomingControls.bWeaponNext= %f\n", g_cb.g_IncomingControls.bWeaponNext);
-				//CPrintF("g_cb.g_IncomingControls.bWeaponPrev= %f\n", g_cb.g_IncomingControls.bWeaponPrev);
-				//CPrintF("Mouse scroll= %f\n", scroll); 
-				break;
-        default:
-            break;
+        pthread_mutex_lock(&g_mySeriousMutex);
+        if (action == ACTION_DOWN && button == 1) {
+            g_cb.g_IncomingControls.bFire = 1;
+        } else if (action == ACTION_UP && button == 0) {
+            g_cb.g_IncomingControls.bFire = 0;
+        }
+        pthread_mutex_unlock(&g_mySeriousMutex);
+    } else if (action == ACTION_SCROLL) {
+        pthread_mutex_lock(&g_mySeriousMutex);
+        if (scroll > 0.0f) {
+            changeWeapon(1);
+        } else if (scroll < 0.0f) {
+            changeWeapon(2);
+        }
+        pthread_mutex_unlock(&g_mySeriousMutex);
     }
-  pthread_mutex_unlock(&g_mySeriousMutex);
 }
+

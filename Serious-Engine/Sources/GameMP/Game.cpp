@@ -406,11 +406,11 @@ FLOAT CControls::GetAxisValue(INDEX iAxis)
   FLOAT fReading = ((PlayerControls *) ctl_pvPlayerControls)->axisValue[iAxis];
 
   // smooth the reading if needed
-  if ( ctrl_bSmoothAxes || aa.aa_bSmooth) {
-    FLOAT fSmoothed = (aa.aa_fLastReading+fReading)/2.0f;
-    aa.aa_fLastReading = fReading;
-    fReading = fSmoothed;
-  }
+ // if ( ctrl_bSmoothAxes || aa.aa_bSmooth) {
+  //  FLOAT fSmoothed = (aa.aa_fLastReading+fReading)/2.0f;
+   // aa.aa_fLastReading = fReading;
+   // fReading = fSmoothed;
+ // }
 
   // integrate to get the absolute reading
   aa.aa_fAbsolute+=fReading;
