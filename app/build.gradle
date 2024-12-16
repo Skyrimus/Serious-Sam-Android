@@ -106,11 +106,10 @@ android {
 		dependsOn 'copyH3DLibs64', 'copyH3DLibs32'
 	}
 
-    compileSdkVersion 28
+    compileSdkVersion 30
     defaultConfig {
         applicationId "com.github.aarcangeli.serioussamandroid"
-        minSdkVersion 21
-        targetSdkVersion 28
+        minSdkVersion 24
         versionCode ver.versionCode
         versionName ver.version
         setProperty("archivesBaseName", "SeriousSamAndroid-v$versionName")
@@ -188,6 +187,7 @@ android {
             path "../CMakeLists.txt"
         }
     }
+    namespace 'com.github.aarcangeli.serioussamandroid'
 }
 
 dependencies {
@@ -201,4 +201,10 @@ dependencies {
     implementation 'com.github.sergioroprado:KeyboardHeightProvider:1.0.4-Egemen'
 	implementation 'com.google.code.gson:gson:2.8.6'
 	implementation 'com.liulishuo.filedownloader:library:1.7.7'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
