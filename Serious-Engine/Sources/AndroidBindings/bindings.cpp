@@ -15,6 +15,8 @@
 void processInputs();
 
 pthread_mutex_t g_mySeriousMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t g_inputMutex = PTHREAD_MUTEX_INITIALIZER;
+
 pthread_t g_mySeriousThreadId;
 bool g_gameRunning = false;
 ANativeWindow *g_currentWindow;
@@ -90,18 +92,18 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_github_aarcangeli_serioussamandroid_MainActivity_setAxisValue(JNIEnv *env, jobject obj, jint key, jfloat value) {
   ASSERT(key >= 0 && key < 10);
-  pthread_mutex_lock(&g_mySeriousMutex);
+  pthread_mutex_lock(&g_inputMutex);
   g_cb.g_IncomingControls.axisValue[key] = value;
-  pthread_mutex_unlock(&g_mySeriousMutex);
+  pthread_mutex_unlock(&g_inputMutex);
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_github_aarcangeli_serioussamandroid_MainActivity_shiftAxisValue(JNIEnv *env, jobject obj, jint key, jfloat value) {
   ASSERT(key >= 0 && key < 10);
-  pthread_mutex_lock(&g_mySeriousMutex);
+  pthread_mutex_lock(&g_inputMutex);
   g_cb.g_IncomingControls.shiftAxisValue[key] += value;
-  pthread_mutex_unlock(&g_mySeriousMutex);
+  pthread_mutex_unlock(&g_inputMutex);
 }
 
 constexpr unsigned int hash(const char *s, int off = 0) {                        

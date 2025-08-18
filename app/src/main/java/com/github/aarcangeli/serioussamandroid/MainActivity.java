@@ -23,6 +23,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.hardware.input.InputManager;
 import android.net.ConnectivityManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -32,6 +33,7 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
@@ -130,6 +132,8 @@ public class MainActivity extends Activity {
 	private InputProcessor processor = new InputProcessor();
 	private InputMethodManager inputMethodManager;
 	private KeyboardHeightProvider keyboardHeightProvider;
+	float pxToDp = 0.0f;
+	float lookScale = 0.0f;
 	private KeyboardHeightProvider.KeyboardListener listener = new KeyboardHeightProvider.KeyboardListener() {
 		@Override
 		public void onHeightChanged(int height) {
@@ -711,7 +715,7 @@ public class MainActivity extends Activity {
 
 	@Override
 	public boolean dispatchGenericMotionEvent(MotionEvent ev) {
-		switch(ev.getAction()) {
+		switch(ev.getActionMasked()) {
 		case MotionEvent.ACTION_MOVE:
 			setAxisValue(AXIS_MOVE_FB, applyDeadZone(-ev.getAxisValue(MotionEvent.AXIS_Y)));
 			setAxisValue(AXIS_MOVE_LR, applyDeadZone(-ev.getAxisValue(MotionEvent.AXIS_X)));
@@ -1251,8 +1255,11 @@ public class MainActivity extends Activity {
 
 		@Override
 		public boolean onTouch(View v, MotionEvent event) {
-			switch (event.getAction()) {
+			switch (event.getActionMasked()) {
 				case MotionEvent.ACTION_DOWN:
+					if (Build.VERSION.SDK_INT >= 21) {
+						getWindow().getDecorView().requestUnbufferedDispatch(event);
+					}
 					if (ButtonsMapping && v instanceof Button){
 						isTracking = false;
 						dX = v.getX() - event.getRawX();
@@ -1276,12 +1283,29 @@ public class MainActivity extends Activity {
 					break;
 				case MotionEvent.ACTION_MOVE:
 					if (isTracking) {
-						float rawX = event.getX();
-						float rawY = event.getY();
-						shiftAxisValue(AXIS_LOOK_LR, -Utils.convertPixelsToDp(rawX - lastX, MainActivity.this) * MULT_VIEW_TRACKER * aimViewSensibility);
-						shiftAxisValue(AXIS_LOOK_UD, -Utils.convertPixelsToDp(rawY - lastY, MainActivity.this) * MULT_VIEW_TRACKER * aimViewSensibility);
-						lastX = rawX;
-						lastY = rawY;
+						float sumDx = 0f, sumDy = 0f;
+						float px = lastX, py = lastY;
+
+						final int hist = event.getHistorySize();
+						for (int i = 0; i < hist; i++) {
+							float hx = event.getHistoricalX(0, i);
+							float hy = event.getHistoricalY(0, i);
+							sumDx += (hx - px);
+							sumDy += (hy - py);
+							px = hx; py = hy;
+						}
+
+						float nx = event.getX(0), ny = event.getY(0);
+						sumDx += (nx - px);
+						sumDy += (ny - py);
+
+						lastX = nx; lastY = ny;
+
+						final float dx = -sumDx * MULT_VIEW_TRACKER * aimViewSensibility;
+						final float dy = -sumDy * MULT_VIEW_TRACKER * aimViewSensibility;
+
+						shiftAxisValue(AXIS_LOOK_LR, dx);
+						shiftAxisValue(AXIS_LOOK_UD, dy);
 					} else if (ButtonsMapping) {
 						if ((v instanceof ButtonView) || (v instanceof Button)) {
 							float X = 0.0f;

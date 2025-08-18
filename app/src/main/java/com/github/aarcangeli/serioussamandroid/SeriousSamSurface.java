@@ -93,6 +93,9 @@ public class SeriousSamSurface extends SurfaceView implements GestureDetector.On
 
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
+		if (android.os.Build.VERSION.SDK_INT >= 21) {
+			requestUnbufferedDispatch(event);
+		}
 		int x,y;
 		switch(event.getAction()) {
 		case MotionEvent.ACTION_DOWN:
@@ -111,7 +114,7 @@ public class SeriousSamSurface extends SurfaceView implements GestureDetector.On
 			MainActivity.executeShell("TouchUp(" + x + ", " + y + ");");
 			break;
 		default:
-			return false;
+			return true;
 		}
 		gestureDetector.onTouchEvent(event);
 		return true;

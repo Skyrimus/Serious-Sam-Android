@@ -13,6 +13,8 @@
 
 extern pthread_mutex_t g_mySeriousMutex;
 extern pthread_t g_mySeriousThreadId;
+extern pthread_mutex_t g_inputMutex;
+
 extern bool g_gameRunning;
 extern ANativeWindow *g_currentWindow;
 
