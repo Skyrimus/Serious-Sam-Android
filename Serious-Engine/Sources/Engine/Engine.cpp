@@ -43,6 +43,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <Engine/Templates/Stock_CShader.h>
 #include <Engine/Templates/StaticArray.cpp>
 #include <Engine/Base/IFeel.h>
+#include <Engine/Base/DeterministicSelfTest.h>
 
 #include <Engine/revision.h>
 #include <sys/system_properties.h>
@@ -275,7 +276,7 @@ ENGINE_API void SE_InitEngine(CTString strGameID)
   CRCT_Init();
 
   _strEngineBuild.PrintF( TRANS("SeriousEngine Build: %d.%d"), _SE_BUILD_MAJOR, _SE_BUILD_MINOR);
-
+    Deterministic_RunSelfTest();
   // print basic engine info
   CPrintF(TRANS("--- Serious Engine E Startup ---\n"));
   CPrintF("  %s\n", _strEngineBuild);

@@ -11,6 +11,14 @@
 #include <android/native_window_jni.h>
 #include <android/log.h>
 #include "mouse.h"
+#include <Engine/Base/DeterministicFP.h>
+#ifdef ANDROID
+#include <android/log.h>
+#define ALOGI(...) __android_log_print(ANDROID_LOG_INFO,"SeriousDetFP",__VA_ARGS__)
+#else
+#define ALOGI(...) do{}while(0)
+#endif
+static bool s_detfp_done = false;
 
 void processInputs();
 
@@ -288,6 +296,20 @@ CViewPort *getViewPort() {
 }
 
 void *seriousMain(void *unused) {
+    if (!s_detfp_done) {
+        SetDeterministicFP();                   
+#if defined(__aarch64__)
+        uint64_t fpcr; asm volatile("mrs %0, fpcr":"=r"(fpcr));
+    ALOGI("[DeterministicFP] FPCR=0x%llx", (unsigned long long)fpcr);
+#elif defined(__arm__)
+        uint32_t fpscr; asm volatile("vmrs %0, fpscr":"=r"(fpscr));
+    ALOGI("[DeterministicFP] FPSCR=0x%08x", fpscr);
+#else
+        ALOGI("[DeterministicFP] non-ARM platform");
+#endif
+        CPrintF("[DeterministicFP] initialized\n");
+        s_detfp_done = true;
+    }
   g_pvpViewPort = new CViewPort();
 
   g_cb.setSeriousState = &setSeriousState;
