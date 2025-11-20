@@ -40,8 +40,13 @@ void SetProgressDescription(const CTString &strDescription)
 
 void CallProgressHook_t(FLOAT fCompleted)
 {
-  g_cb.setSeriousState(GS_LOADING);
-  g_cb.syncSeriousThreads();
+    if (g_cb.setSeriousState != NULL) {
+        g_cb.setSeriousState(GS_LOADING);
+    }
+
+    if (g_cb.syncSeriousThreads != NULL) {
+        g_cb.syncSeriousThreads();
+    }
 
   if (_pLoadingHook_t!=NULL) {
     _phiLoadingInfo.phi_fCompleted = fCompleted;

@@ -44,7 +44,7 @@ CHAR* _szIPPortBufferLocal = NULL;
 INT   _iIPPortBufferLocalLen = 0;
 
 BOOL _bServer = FALSE;
-BOOL _bInitialized = FALSE;
+BOOL _bMInitialized = FALSE;
 BOOL _bActivated = FALSE;
 BOOL _bActivatedLocal = FALSE;
 
@@ -278,7 +278,7 @@ extern void MS_OnServerStart(void)
 {
   // join
   _bServer = TRUE;
-  _bInitialized = TRUE;
+  _bMInitialized = TRUE;
   
   // [SSE]
   if (ms_bDarkPlacesMS) {
@@ -308,7 +308,7 @@ extern void MS_OnServerStart(void)
 // --------------------------------------------------------------------------------------
 extern void MS_OnServerEnd(void)
 {
-  if (!_bInitialized) {
+  if (!_bMInitialized) {
     return;
   }
 
@@ -323,7 +323,7 @@ extern void MS_OnServerEnd(void)
   }
    close(_socket);
   _uninitWinsock();
-  _bInitialized = FALSE;
+  _bMInitialized = FALSE;
 }
 
 // --------------------------------------------------------------------------------------
@@ -332,7 +332,7 @@ extern void MS_OnServerEnd(void)
 // --------------------------------------------------------------------------------------
 extern void MS_OnServerUpdate(void)
 {
-  if ((_socket == NULL) || (!_bInitialized)) {
+  if ((_socket == NULL) || (!_bMInitialized)) {
     return;
   }
 
@@ -363,7 +363,7 @@ extern void MS_OnServerUpdate(void)
 // --------------------------------------------------------------------------------------
 extern void MS_OnServerStateChanged(void)
 {
-  if (!_bInitialized) {
+  if (!_bMInitialized) {
     return;
   }
 
@@ -405,7 +405,7 @@ extern void MS_EnumTrigger(BOOL bInternet)
 // --------------------------------------------------------------------------------------
 extern void MS_EnumUpdate(void)
 {
-  if ((_socket == NULL) || (!_bInitialized)) {
+  if ((_socket == NULL) || (!_bMInitialized)) {
     return;
   }
 
@@ -428,7 +428,7 @@ extern void MS_EnumUpdate(void)
 // --------------------------------------------------------------------------------------
 extern void MS_EnumCancel(void)
 {
-  if (_bInitialized) {
+  if (_bMInitialized) {
     CPrintF("...MS_EnumCancel!\n");
     ga_asrRequests.Clear();
 	close(_socket);

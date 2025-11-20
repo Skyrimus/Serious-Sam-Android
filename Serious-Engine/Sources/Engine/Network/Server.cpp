@@ -1697,26 +1697,30 @@ void CServer::Handle(INDEX iClient, CNetworkMessage &nmMessage)
   } break;
   // if a crc response is received
   case MSG_REP_CRCCHECK: {
-    // get it
-    ULONG ulCRC;
-    INDEX iLastSequence;
-    nmMessage>>ulCRC>>iLastSequence;
-    // if not same
-    if (_pNetwork->ga_ulCRC!=ulCRC) {
-      // disconnect the client
-      SendDisconnectMessage(iClient, TRANS("Wrong CRC check."));
-    // if same
-    } else {
-      CPrintF(TRANS("Server: Client '%s', CRC check OK\n"), 
-        (const char*)_cmiComm.Server_GetClientName(iClient));
-      // use the piggybacked sequence number to initiate sending stream to it
+      // get it
+      ULONG ulCRC;
+      INDEX iLastSequence;
+      nmMessage>>ulCRC>>iLastSequence;
+
+      CPrintF(TRANS("Server: Client '%s' CRC: server=%08X client=%08X\n"),
+              (const char*)_cmiComm.Server_GetClientName(iClient),
+              _pNetwork->ga_ulCRC, ulCRC);
+
+      if (_pNetwork->ga_ulCRC!=ulCRC) {
+          CPrintF(TRANS("Server: WARNING - CRC mismatch for client '%s', accepting anyway on DedicatedServerAndroid.\n"),
+                  (const char*)_cmiComm.Server_GetClientName(iClient));
+      } else {
+          CPrintF(TRANS("Server: Client '%s', CRC check OK\n"),
+                  (const char*)_cmiComm.Server_GetClientName(iClient));
+      }
+
       CSessionSocket &sso = srv_assoSessions[iClient];
       sso.sso_bSendStream = TRUE;
       sso.sso_nsBuffer.RemoveOlderBlocksBySequence(iLastSequence);
       sso.sso_iLastSentSequence = iLastSequence;
-    }
-   
+
   } break;
+
   // if a rcon request is received
   case MSG_ADMIN_COMMAND: {
     extern CTString net_strAdminPassword;
