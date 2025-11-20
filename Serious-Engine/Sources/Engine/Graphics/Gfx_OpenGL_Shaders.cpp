@@ -13,8 +13,11 @@ public:
   GLuint pgmObject = 0;
   const char *vertexShader, *fragmentShader;
   // uniforms
-  GLint projMat;
+  GLint projMat3D;
+  GLint projMat2D;
+  GLint uUseOrtho;
   GLint modelViewMat;
+  GLint texMat;
   GLint mainTexture;
   GLint enableTexture;
   GLint enableAlphaTest;
@@ -77,8 +80,11 @@ void gfxUseProgram(GfxProgram _program) {
     glUseProgram(pgm->pgmObject);
 
     // get uniforms
-    pgm->projMat = glGetUniformLocation(pgm->pgmObject, "projMat");
+    pgm->projMat3D = glGetUniformLocation(pgm->pgmObject, "projMat3D");
+    pgm->projMat2D = glGetUniformLocation(pgm->pgmObject, "projMat2D");
+    pgm->uUseOrtho = glGetUniformLocation(pgm->pgmObject, "uUseOrtho");
     pgm->modelViewMat = glGetUniformLocation(pgm->pgmObject, "modelViewMat");
+    pgm->texMat       = glGetUniformLocation(pgm->pgmObject, "texMat");
     pgm->mainTexture = glGetUniformLocation(pgm->pgmObject, "mainTexture");
     if (pgm->mainTexture >= 0) glUniform1i(pgm->mainTexture, 0);
     pgm->enableTexture = glGetUniformLocation(pgm->pgmObject, "enableTexture");
@@ -201,9 +207,23 @@ void gfxSyncProgram(struct GfxShadersUniforms &params) {
   ASSERT(pgm);
   glUseProgram(pgm->pgmObject);
 
-  // update buffers
-  glUniformMatrix4fv(pgm->projMat, 1, GL_FALSE, gles_adapter::getProjMat());
-  glUniformMatrix4fv(pgm->modelViewMat, 1, GL_FALSE, gles_adapter::getModelViewMat());
+    if (pgm->projMat3D >= 0) {
+        glUniformMatrix4fv(pgm->projMat3D, 1, GL_FALSE, gles_adapter::getProjMat());      // 3D
+    }
+    if (pgm->projMat2D >= 0) {
+        glUniformMatrix4fv(pgm->projMat2D, 1, GL_FALSE, gles_adapter::getProjMat2D());    // 2D
+    }
+    if (pgm->uUseOrtho >= 0) {
+        glUniform1f(pgm->uUseOrtho, gles_adapter::isOrthoActive() ? 1.0f : 0.0f);
+    }
+
+    if (pgm->modelViewMat >= 0) {
+        glUniformMatrix4fv(pgm->modelViewMat, 1, GL_FALSE, gles_adapter::getModelViewMat());
+    }
+
+    if (pgm->texMat >= 0) {
+        glUniformMatrix4fv(pgm->texMat, 1, GL_FALSE, gles_adapter::getTexMat());
+    }
   params.enableTexture = gles_adapter::isTexture2d();
   params.enableAlphaTest = gles_adapter::isAlphaTest();
 
