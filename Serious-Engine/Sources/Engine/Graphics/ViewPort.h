@@ -20,7 +20,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #endif
 
 #include <Engine/Graphics/Raster.h>
-#include <android/native_window.h>
+#if defined(ANDROID)
+  #include <android/native_window.h>
+#endif
 #include <EGL/egl.h>
 
 /*
@@ -41,7 +43,9 @@ public:
   void CloseCanvas(BOOL bRelease=FALSE);
 
   // initialize for specific window
+#if defined(ANDROID)
   void Initialize(ANativeWindow *window);
+#endif
 
 // interface
   /* Constructor for given window. */

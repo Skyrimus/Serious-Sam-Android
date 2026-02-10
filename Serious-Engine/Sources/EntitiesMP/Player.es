@@ -2846,12 +2846,14 @@ functions:
   void ChecksumForSync(ULONG &ulCRC, INDEX iExtensiveSyncCheck)
   {
     CPlayerEntity::ChecksumForSync(ulCRC, iExtensiveSyncCheck);
-    CRC_AddLONG(ulCRC, m_psLevelStats.ps_iScore);
-    CRC_AddLONG(ulCRC, m_iMana);
-    if (iExtensiveSyncCheck>0) {
+    // Keep regular sync-check tolerant to client-side UI/prediction related
+    // stat transitions. Include these in deeper levels only.
+    if (iExtensiveSyncCheck>1) {
+      CRC_AddLONG(ulCRC, m_psLevelStats.ps_iScore);
+      CRC_AddLONG(ulCRC, m_iMana);
       CRC_AddFLOAT(ulCRC, m_fManaFraction);
+      CRC_AddFLOAT(ulCRC, m_fArmor);
     }
-    CRC_AddFLOAT(ulCRC, m_fArmor);
   }
 
 

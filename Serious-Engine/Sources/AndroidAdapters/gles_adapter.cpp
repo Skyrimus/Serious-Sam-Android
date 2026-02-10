@@ -1,13 +1,23 @@
 typedef double GLdouble;
 typedef double GLclampd;
-#include <android/log.h>
-#ifndef LOGI
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "SeriousGLESAdapter", __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "SeriousGLESAdapter", __VA_ARGS__)
+#if defined(ANDROID)
+  #include <android/log.h>
+  #ifndef LOGI
+    #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "SeriousGLESAdapter", __VA_ARGS__)
+    #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "SeriousGLESAdapter", __VA_ARGS__)
+  #endif
+#else
+  #include <stdio.h>
+  #ifndef LOGI
+    #define LOGI(...) do { fprintf(stdout, __VA_ARGS__); fprintf(stdout, "\n"); } while (0)
+    #define LOGE(...) do { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+  #endif
 #endif
 
 #include <GLES2/gl2.h>
-#include <GLES3/gl3.h>
+#if __has_include(<GLES3/gl3.h>)
+  #include <GLES3/gl3.h>
+#endif
 #include <AndroidAdapters/gles_adapter.h>
 #include <stdlib.h>
 #include <glm/glm.hpp>

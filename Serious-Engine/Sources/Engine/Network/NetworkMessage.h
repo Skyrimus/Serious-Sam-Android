@@ -233,23 +233,14 @@ public:
 };
 
 /*
- * !!! FIXME: R_OK is used with the unix access() API...
- * !!! FIXME:  we're lucky...on Linux, it's a macro, but it could be an
- * !!! FIXME:  enum just as easily.  --ryan.
- */
-#ifdef R_OK
-#undef R_OK
-#endif
-
-/*
  * Stream of message blocks that can be sent across network.
  */
 class CNetworkStream {
 public:
   enum Result {
-    R_OK = 1,
-    R_BLOCKMISSING,           // block is missing in the stream
-    R_BLOCKNOTRECEIVEDYET,    // block is not yet received
+    NSR_OK = 1,
+    NSR_BLOCKMISSING,           // block is missing in the stream
+    NSR_BLOCKNOTRECEIVEDYET,    // block is not yet received
   };
 public:
   CListHead ns_lhBlocks;   // list of blocks of this stream (higher sequences first)

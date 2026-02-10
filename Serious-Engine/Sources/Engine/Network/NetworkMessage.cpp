@@ -732,7 +732,7 @@ CNetworkStream::Result CNetworkStream::GetBlockBySequence(
     if (nsbInList.nsb_iSequenceNumber == iSequenceNumber) {
       // return it
       pnsbBlock = itnsbInList;
-      return R_OK;
+      return NSR_OK;
     }
     // if the block in list has older sequence
     if (nsbInList.nsb_iSequenceNumber < iSequenceNumber) {
@@ -747,12 +747,12 @@ CNetworkStream::Result CNetworkStream::GetBlockBySequence(
   if (bNewerFound) {
     // return that the block is missing (probably should be resent)
     pnsbBlock = NULL;
-    return R_BLOCKMISSING;
+    return NSR_BLOCKMISSING;
   // if no newer blocks were found
   } else {
     // we assume that the wanted block is not yet received
     pnsbBlock = NULL;
-    return R_BLOCKNOTRECEIVEDYET;
+    return NSR_BLOCKNOTRECEIVEDYET;
   }
 }
 
@@ -860,7 +860,20 @@ void CPlayerAction::Normalize(void)
 // create a checksum value for sync-check
 void CPlayerAction::ChecksumForSync(ULONG &ulCRC)
 {
-  CRC_AddBlock(ulCRC, (UBYTE*)this, sizeof(this));
+  // Keep sync-check deterministic across platforms:
+  // - don't hash padding bytes inside CPlayerAction
+  // - don't hash pa_llCreated (transport/ping timestamp, not gameplay state)
+  FLOAT f;
+  f = pa_vTranslation(1); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  f = pa_vTranslation(2); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  f = pa_vTranslation(3); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  f = pa_aRotation(1); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  f = pa_aRotation(2); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  f = pa_aRotation(3); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  f = pa_aViewRotation(1); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  f = pa_aViewRotation(2); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  f = pa_aViewRotation(3); if (f==0) f = 0; CRC_AddFLOAT(ulCRC, f);
+  CRC_AddLONG(ulCRC, pa_ulButtons);
 }
 
 #define DUMPVECTOR(v) \

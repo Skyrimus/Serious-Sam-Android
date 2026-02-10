@@ -46,7 +46,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <Engine/Base/DeterministicSelfTest.h>
 
 #include <Engine/revision.h>
-#include <sys/system_properties.h>
+#if defined(ANDROID)
+  #include <sys/system_properties.h>
+#endif
 #include <sys/sysinfo.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -314,21 +316,25 @@ ENGINE_API void SE_InitEngine(CTString strGameID)
 //  } else {
 //    CPrintF(TRANS("Error getting OS info: %s\n"), GetWindowsError(GetLastError()).str_String );
 //  }
-  char buffer[PROP_VALUE_MAX+1];
-  if (__system_property_get("ro.product.model", buffer)) {
-    CPrintF("  Running on Android [%s]\n", buffer);
-  } else {
-    CPrintF("  Running on Android\n");
-  }
-  if (__system_property_get("ro.build.version.sdk", buffer)) {
-    CPrintF("  API level %s\n", buffer);
-  }
-  if (__system_property_get("ro.product.cpu.abi", buffer)) {
-    CPrintF("  Abi: %s", buffer);
-  }
-  if (__system_property_get("ro.product.cpu.abilist", buffer)) {
-    CPrintF(" [avaiable: %s]", buffer);
-  }
+  #if defined(ANDROID)
+    char buffer[PROP_VALUE_MAX+1];
+    if (__system_property_get("ro.product.model", buffer)) {
+      CPrintF("  Running on Android [%s]\n", buffer);
+    } else {
+      CPrintF("  Running on Android\n");
+    }
+    if (__system_property_get("ro.build.version.sdk", buffer)) {
+      CPrintF("  API level %s\n", buffer);
+    }
+    if (__system_property_get("ro.product.cpu.abi", buffer)) {
+      CPrintF("  Abi: %s", buffer);
+    }
+    if (__system_property_get("ro.product.cpu.abilist", buffer)) {
+      CPrintF(" [avaiable: %s]", buffer);
+    }
+  #else
+    CPrintF("  Running on Linux\n");
+  #endif
   CPrintF("\n");
   CPrintF("\n");
 

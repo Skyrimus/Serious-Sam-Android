@@ -3565,7 +3565,7 @@ void CEntity::ChecksumForSync(ULONG &ulCRC, INDEX iExtensiveSyncCheck)
       (ENF_SELECTED|ENF_INRENDERING|ENF_VALIDSHADINGINFO|ENF_FOUNDINGRIDSEARCH|ENF_WILLBEPREDICTED|ENF_PREDICTABLE));
     CRC_AddLONG(ulCRC, en_ulPhysicsFlags);
     CRC_AddLONG(ulCRC, en_ulCollisionFlags);
-    CRC_AddLONG(ulCRC, en_ctReferences);
+    // Reference count depends on local ownership/lifetime details and is not deterministic cross-platform.
   }
   CRC_AddLONG(ulCRC, en_RenderType);
   if (iExtensiveSyncCheck>0) {

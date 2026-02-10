@@ -159,20 +159,29 @@ void ExecScript(const CTString &str)
 
 BOOL Init(int argc, char* argv[])
 {
-  _fnmApplicationPath = CTString("/data/local/tmp/SeriousSamTSE/"); // This shit :)
-  _fnmApplicationLibPath = CTString("/data/local/tmp/SeriousSamTSE/"); // This shit too :)
-  _fnmApplicationExe = CTFILENAME("Bin/SeriousSam.exe");
+  const char *customHome = getenv("SERIOUSSAM_HOME");
+  if (customHome != NULL && customHome[0] != '\0') {
+    _fnmApplicationPath = CTString(customHome);
+    if (_fnmApplicationPath[_fnmApplicationPath.Length() - 1] != '\\'
+      && _fnmApplicationPath[_fnmApplicationPath.Length() - 1] != '/') {
+      _fnmApplicationPath += "/";
+    }
+  } else {
+    _fnmApplicationPath = CTString("./");
+  }
+  _fnmApplicationLibPath = _fnmApplicationPath;
+  _fnmApplicationExe = CTFILENAME("DedicatedServer");
   _bDedicatedServer = TRUE;
 
-  if (argc!=1+1 && argc!=2+1) {
-      CPrintF("Usage: DedicatedServer <configname> [<modname>]\n"
+  if (argc < 2 || argc > 3) {
+      CPrintF("Usage: DedicatedServer <config-name> [<mod-name>]\n"
       "This starts a server reading configs from directory 'Scripts\\Dedicated\\<configname>\\'\n");
     exit(0);
   }
 
   ded_strConfig = CTString("Scripts\\Dedicated\\")+argv[1]+"\\";
 
-  if (argc==2+1) {
+  if (argc==3) {
     _fnmMod = CTString("Mods\\")+argv[2]+"\\";
   }
 
@@ -428,4 +437,3 @@ int main(int argc, char* argv[])
 
   return iResult;
 }
-

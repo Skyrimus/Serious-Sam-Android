@@ -36,6 +36,8 @@ if (STATIC_LINKING)
   endif ()
 endif ()
 
-set_target_properties(DedicatedServerAndroid PROPERTIES
-  OUTPUT_NAME "DedicatedServerAndroid"
-)
+if (ANDROID)
+  set_target_properties(DedicatedServerAndroid PROPERTIES OUTPUT_NAME "DedicatedServerAndroid")
+else ()
+  set_target_properties(DedicatedServerAndroid PROPERTIES OUTPUT_NAME "DedicatedServer")
+endif ()

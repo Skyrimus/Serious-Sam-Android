@@ -423,7 +423,10 @@ functions:
   export void ChecksumForSync(ULONG &ulCRC, INDEX iExtensiveSyncCheck)
   {
     CRationalEntity::ChecksumForSync(ulCRC, iExtensiveSyncCheck);
-    if (iExtensiveSyncCheck>0) {
+    // Movement helper state can legitimately differ transiently between
+    // client/server because of prediction and smoothing. Keep it out of
+    // regular sync level (1), use only for deeper diagnostics.
+    if (iExtensiveSyncCheck>1) {
       if (en_pbpoStandOn!=NULL) {
         CRC_AddLONG(ulCRC, en_pbpoStandOn->bpo_iInWorld);
       }

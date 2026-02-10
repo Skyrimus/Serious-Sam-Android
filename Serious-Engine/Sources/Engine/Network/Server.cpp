@@ -51,6 +51,25 @@ extern CClientInterface cm_aciClients[SERVER_CLIENTS];
 
 extern INDEX ser_iMaxAllowedChatPerSec;
 extern INDEX ser_bEnumeration;
+extern INDEX net_bSyncDiag;
+extern INDEX net_bSyncDiagDumpOnBad;
+extern CTString net_strSyncDiagTag;
+
+static void AppendSyncDiagLine(const CTString &fnm, const CTString &line)
+{
+  try {
+    CTFileStream strm;
+    try {
+      strm.Open_t(fnm, CTStream::OM_WRITE);
+    } catch (const char *) {
+      strm.Create_t(fnm, CTStream::CM_TEXT);
+    }
+    strm.SetPos_t(strm.GetStreamSize());
+    strm.FPrintF_t("%s\n", (const char *)line);
+    strm.Close();
+  } catch (const char *) {
+  }
+}
 
 CSessionSocket::CSessionSocket(void)
 {
@@ -440,7 +459,7 @@ void CServer::SendGameStreamBlocks(INDEX iClient)
     CNetworkStreamBlock *pnsbBlock;
     CNetworkStream::Result res = sso.sso_nsBuffer.GetBlockBySequence(iSequence, pnsbBlock);
     // if it is not found
-    if (res!=CNetworkStream::R_OK) {
+    if (res!=CNetworkStream::NSR_OK) {
       // if going upward
       if (iStep>0 ) {
 //        // if this block is missing
@@ -565,7 +584,7 @@ void CServer::ResendGameStreamBlocks(INDEX iClient, INDEX iSequence0, INDEX ctSe
     CNetworkStreamBlock *pnsbBlock;
     CNetworkStream::Result res = sso.sso_nsBuffer.GetBlockBySequence(iSequence, pnsbBlock);
     // if it is not found
-    if (res!=CNetworkStream::R_OK) {
+    if (res!=CNetworkStream::NSR_OK) {
       // tell the requesting session state to disconnect
       SendDisconnectMessage(iClient, TRANS("Gamestream synchronization lost"));
       return;
@@ -1071,8 +1090,31 @@ void CServer::ConnectRemoteSessionState(INDEX iClient, CNetworkMessage &nm)
     strmInfo<<INDEX(MSG_REP_CONNECTREMOTESESSIONSTATE);
     strmInfo<<ser_strMOTD;
     strmInfo<<_pNetwork->ga_World.wo_fnmFileName;
-    strmInfo<<_pNetwork->ga_sesSessionState.ses_ulSpawnFlags;
+    strmInfo<<_pNetwork->ga_ulDefaultSpawnFlags;
     strmInfo.Write_t(_pNetwork->ga_aubDefaultProperties, NET_MAXSESSIONPROPERTIES);
+    INDEX slPackedDefault = 0;
+    INDEX slRawDefault = 0;
+    if (_pNetwork->ga_pubDefaultState!=NULL && _pNetwork->ga_slDefaultStateSize>0) {
+      CTMemoryStream strmDefaultRaw;
+      strmDefaultRaw.Write_t(_pNetwork->ga_pubDefaultState, _pNetwork->ga_slDefaultStateSize);
+      strmDefaultRaw.SetPos_t(0);
+
+      CTMemoryStream strmDefaultPacked;
+      CzlibCompressor comp;
+      comp.PackStream_t(strmDefaultRaw, strmDefaultPacked);
+
+      slPackedDefault = strmDefaultPacked.GetStreamSize();
+      slRawDefault = _pNetwork->ga_slDefaultStateSize;
+      strmInfo<<slPackedDefault<<slRawDefault;
+
+      strmDefaultPacked.SetPos_t(0);
+      UBYTE *pubPacked = (UBYTE*)AllocMemory(slPackedDefault);
+      strmDefaultPacked.Read_t(pubPacked, slPackedDefault);
+      strmInfo.Write_t(pubPacked, slPackedDefault);
+      FreeMemory(pubPacked);
+    } else {
+      strmInfo<<INDEX(0)<<INDEX(0);
+    }
     SLONG slSize = strmInfo.GetStreamSize();
 
     // send the stream to the remote session state
@@ -1500,15 +1542,26 @@ void CServer::Handle(INDEX iClient, CNetworkMessage &nmMessage)
       // read sync check from the packet
       CSyncCheck scRemote;
       nmMessage.Read(&scRemote, sizeof(scRemote));
+      CSessionSocket &sso = srv_assoSessions[iClient];
     
       // try to find it in buffer
       CSyncCheck scLocal;
       INDEX iFound = FindSyncCheck(scRemote.sc_tmTick, scLocal);
+
+      if (net_bSyncDiag) {
+        const ULONG ulLocalCRC = (iFound == 0) ? scLocal.sc_ulCRC : 0;
+        const INDEX iLocalLevel = (iFound == 0) ? scLocal.sc_iLevel : -1;
+        CTString strLine;
+        strLine.PrintF("RCV client=%d found=%d tick=%.2f seq=%d levelR=%d crcR=0x%08X levelL=%d crcL=0x%08X bad=%d",
+          iClient, iFound, scRemote.sc_tmTick, scRemote.sc_iSequence, scRemote.sc_iLevel, scRemote.sc_ulCRC,
+          iLocalLevel, ulLocalCRC, sso.sso_ctBadSyncs);
+        CTString fnm = CTString("Temp\\syncdiag_server_") + net_strSyncDiagTag + ".log";
+        AppendSyncDiagLine(fnm, strLine);
+      }
       // if found
       if (iFound==0) {
         // flush the clients stream buffer up to that sequence 
         // (the sync is used as piggy-backed acknowledge of packet receival)
-        CSessionSocket &sso = srv_assoSessions[iClient];
         sso.sso_nsBuffer.RemoveOlderBlocksBySequence(scRemote.sc_iSequence);
 
         // if level was changed
@@ -1521,6 +1574,21 @@ void CServer::Handle(INDEX iClient, CNetworkMessage &nmMessage)
           if( ser_bReportSyncBad) {
             CPrintF( TRANS("SYNCBAD: Client '%s', Sequence %d Tick %.2f - bad %d\n"), 
               (const char *) _cmiComm.Server_GetClientName(iClient), scRemote.sc_iSequence , scRemote.sc_tmTick, sso.sso_ctBadSyncs);
+          }
+          if (net_bSyncDiagDumpOnBad) {
+            try {
+              CTString fnmDump;
+              fnmDump.PrintF("Temp\\syncbad_server_c%d_s%d_t%d.txt", iClient, scRemote.sc_iSequence, INDEX(scRemote.sc_tmTick*100.0f));
+              CTFileStream strmDump;
+              strmDump.Create_t(fnmDump, CTStream::CM_TEXT);
+              strmDump.FPrintF_t("REMOTE tick=%.2f seq=%d level=%d crc=0x%08X\n",
+                scRemote.sc_tmTick, scRemote.sc_iSequence, scRemote.sc_iLevel, scRemote.sc_ulCRC);
+              strmDump.FPrintF_t("LOCAL  tick=%.2f seq=%d level=%d crc=0x%08X\n",
+                scLocal.sc_tmTick, scLocal.sc_iSequence, scLocal.sc_iLevel, scLocal.sc_ulCRC);
+              _pNetwork->ga_sesSessionState.DumpSyncToFile_t(strmDump, _pNetwork->ga_sesSessionState.ses_iExtensiveSyncCheck);
+              strmDump.Close();
+            } catch (const char *) {
+            }
           }
           if (ser_iKickOnSyncBad > 0) {
             if (sso.sso_ctBadSyncs >= ser_iKickOnSyncBad) {

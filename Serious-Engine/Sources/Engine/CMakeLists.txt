@@ -228,7 +228,6 @@ set(
 
   ${SE_BASE}/_android/ErrorReporting.cpp
   ${SE_BASE}/_android/Input.cpp
-  ${SE_BASE}/Sound/SoundLibrary_android.cpp
   ${SE_BASE}/_android/MultiMonitor.cpp
   ${SE_BASE}/Graphics/ViewPort_android.cpp
   ${SE_BASE}/Base/DeterministicFP.cpp
@@ -259,6 +258,16 @@ set(
   #"${SE_BASE}/Rendering/RendMisc.cpp"
 )
 
+if (ANDROID)
+  list(APPEND SE_ENGINE_SOURCES
+    ${SE_BASE}/Sound/SoundLibrary_android.cpp
+  )
+else ()
+  list(APPEND SE_ENGINE_SOURCES
+    ${SE_BASE}/Sound/SoundLibrary_headless.cpp
+  )
+endif ()
+
 run_flex("${SE_CURRENT_GENERATED_DIR}/Base/Scanner.cpp" "${SE_BASE}/Base/Scanner.l" "${SE_BASE}/Base/FLEX.skl" "${SE_BASE}/Base")
 run_bison("${SE_CURRENT_GENERATED_DIR}/Base/Parser.cpp" "${SE_BASE}/Base/Parser.y" "${SE_CURRENT_GENERATED_DIR}/Base/Parser.c" "")
 run_flex("${SE_CURRENT_GENERATED_DIR}/Ska/smcScan.cpp" "${SE_BASE}/Ska/smcScan.l" "${SE_BASE}/Ska/smcFlex.skl" "${SE_BASE}/Ska")
@@ -272,7 +281,12 @@ endif ()
 add_dependencies(Engine se-ecc)
 target_link_libraries(Engine android-adapters)
 target_link_libraries(Engine vorbis amp11lib)
-target_link_libraries(Engine GLESv2 GLESv3 EGL log android OpenSLES)
+if (ANDROID)
+  target_link_libraries(Engine GLESv2 GLESv3 EGL log android OpenSLES)
+else ()
+  find_package(Threads REQUIRED)
+  target_link_libraries(Engine GLESv2 EGL Threads::Threads m dl)
+endif ()
 
 target_compile_options(Engine PRIVATE "-I${CMAKE_CURRENT_SOURCE_DIR}")
 

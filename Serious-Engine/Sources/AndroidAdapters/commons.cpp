@@ -1,7 +1,6 @@
 #include <Engine/StdH.h>
 #include <Engine/Base/ErrorReporting.h>
 #include <time.h>
-#include <android/log.h>
 #include <AndroidAdapters/binding-callbacks.h>
 
 BindingCallbacks g_cb {};

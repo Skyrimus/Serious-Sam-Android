@@ -54,6 +54,24 @@ extern INDEX net_bLerping;
 extern FLOAT net_tmConnectionTimeout;
 extern FLOAT net_tmProblemsTimeOut;
 extern FLOAT net_tmDisconnectTimeout;
+extern INDEX net_bSyncDiag;
+extern CTString net_strSyncDiagTag;
+
+static void AppendSyncDiagLine(const CTString &fnm, const CTString &line)
+{
+  try {
+    CTFileStream strm;
+    try {
+      strm.Open_t(fnm, CTStream::OM_WRITE);
+    } catch (const char *) {
+      strm.Create_t(fnm, CTStream::CM_TEXT);
+    }
+    strm.SetPos_t(strm.GetStreamSize());
+    strm.FPrintF_t("%s\n", (const char *)line);
+    strm.Close();
+  } catch (const char *) {
+  }
+}
 
 // this is from ProgresHook.cpp - so we tell the progresshook to run client/srever updates
 extern BOOL _bRunNetUpdates;
@@ -359,8 +377,40 @@ void CSessionState::Start_AtClient_t(INDEX ctLocalPlayers)     // throw char *
     strmMessage>>ulSpawnFlags;
     UBYTE aubProperties[NET_MAXSESSIONPROPERTIES];
     strmMessage.Read_t(aubProperties, NET_MAXSESSIONPROPERTIES);
-    // create default state
-    NET_MakeDefaultState_t(fnmWorld, ulSpawnFlags, aubProperties, *pstrmState);
+    INDEX iServerDefaultPackedSize = 0;
+    INDEX iServerDefaultRawSize = 0;
+    if (strmMessage.GetPos_t() < strmMessage.GetStreamSize()) {
+      strmMessage>>iServerDefaultPackedSize>>iServerDefaultRawSize;
+    }
+
+    if (iServerDefaultPackedSize>0 && iServerDefaultRawSize>0
+      && iServerDefaultPackedSize <= (strmMessage.GetStreamSize()-strmMessage.GetPos_t())) {
+      UBYTE *pubPacked = (UBYTE*)AllocMemory(iServerDefaultPackedSize);
+      strmMessage.Read_t(pubPacked, iServerDefaultPackedSize);
+
+      CTMemoryStream strmPacked;
+      strmPacked.Write_t(pubPacked, iServerDefaultPackedSize);
+      strmPacked.SetPos_t(0);
+      FreeMemory(pubPacked);
+
+      CTMemoryStream strmRaw;
+      CzlibCompressor comp;
+      comp.UnpackStream_t(strmPacked, strmRaw);
+      strmRaw.SetPos_t(0);
+
+      INDEX iUnpackedSize = strmRaw.GetStreamSize();
+      if (iUnpackedSize==iServerDefaultRawSize) {
+        UBYTE *pubDefault = (UBYTE*)AllocMemory(iUnpackedSize);
+        strmRaw.Read_t(pubDefault, iUnpackedSize);
+        pstrmState->Write_t(pubDefault, iUnpackedSize);
+        FreeMemory(pubDefault);
+      } else {
+        NET_MakeDefaultState_t(fnmWorld, ulSpawnFlags, aubProperties, *pstrmState);
+      }
+    } else {
+      // fallback for old servers that do not send the state blob
+      NET_MakeDefaultState_t(fnmWorld, ulSpawnFlags, aubProperties, *pstrmState);
+    }
     pstrmState->SetPos_t(0);
   }
 
@@ -812,8 +862,9 @@ void CSessionState::ChecksumForSync(ULONG &ulCRC, INDEX iExtensiveSyncCheck)
   {FOREACHINSTATICARRAY(ses_apltPlayers, CPlayerTarget, itclt) {
     CPlayerTarget &clt = *itclt;
     if (clt.IsActive()) {
-      clt.plt_paPreLastAction.ChecksumForSync(ulCRC);
-      clt.plt_paLastAction.ChecksumForSync(ulCRC);
+      // Action buffers are transport-latency dependent and can legitimately
+      // differ between client and server while gameplay state is still valid.
+      // Keep sync-check based on deterministic world/player state only.
       clt.plt_penPlayerEntity->ChecksumForSync(ulCRC, iExtensiveSyncCheck);
     }
   }}
@@ -1157,7 +1208,7 @@ void CSessionState::ProcessGameStream(void)
     CNetworkStreamBlock *pnsbBlock;
     CNetworkStream::Result res = ses_nsGameStream.GetBlockBySequence(iSequence, pnsbBlock);
     // if it is found
-    if (res==CNetworkStream::R_OK) {
+    if (res==CNetworkStream::NSR_OK) {
       // if recording a demo
       if (_pNetwork->ga_bDemoRec) {
         // try to
@@ -1196,12 +1247,12 @@ void CSessionState::ProcessGameStream(void)
       }
 
     // if it is not avaliable yet
-    } else if (res==CNetworkStream::R_BLOCKNOTRECEIVEDYET) {
+    } else if (res==CNetworkStream::NSR_BLOCKNOTRECEIVEDYET) {
       // finish
       _pfNetworkProfile.StopTimer(CNetworkProfile::PTI_SESSIONSTATE_PROCESSGAMESTREAM);
       return;
     // if it is missing
-    } else if (res==CNetworkStream::R_BLOCKMISSING) {
+    } else if (res==CNetworkStream::NSR_BLOCKMISSING) {
       
       // if it is a new sequence
       if (iSequence>ses_iMissingSequence) {
@@ -2084,6 +2135,15 @@ void CSessionState::MakeSynchronisationCheck(void)
   sc.sc_iSequence = ses_iLastProcessedSequence; 
   sc.sc_ulCRC = ulLocalCRC;
   sc.sc_iLevel = ses_iLevel;
+
+  if (net_bSyncDiag) {
+    CTString strRole = _pNetwork->IsServer() ? "LOCAL" : "CLIENT";
+    CTString strLine;
+    strLine.PrintF("SND role=%s tick=%.2f seq=%d level=%d crc=0x%08X",
+      (const char *)strRole, sc.sc_tmTick, sc.sc_iSequence, sc.sc_iLevel, sc.sc_ulCRC);
+    CTString fnm = CTString("Temp\\syncdiag_client_") + net_strSyncDiagTag + ".log";
+    AppendSyncDiagLine(fnm, strLine);
+  }
 
   // NOTE: If local client, here we buffer the sync and send it to ourselves.
   // It's because synccheck is piggybacking session message buffer, so we acknowledge

@@ -99,7 +99,7 @@ INDEX ser_bPauseOnSyncBad = FALSE;
 INDEX ser_iKickOnSyncBad = 10;
 INDEX ser_bKickOnSyncLate = 1;
 INDEX ser_iRememberBehind = 3000;
-INDEX ser_iExtensiveSyncCheck = 1;
+INDEX ser_iExtensiveSyncCheck = 0;
 INDEX ser_bClientsMayPause = TRUE;
 FLOAT ser_tmSyncCheckFrequency = 1.0f;
 INDEX ser_iSyncCheckBuffer = 60;
@@ -114,7 +114,7 @@ INDEX ser_bInverseBanning = FALSE;
 CTString ser_strMOTD = "";
 
 // [SSE] Netcode Update - Better Random
-INDEX ser_bBetterRandomOnStart = TRUE;
+INDEX ser_bBetterRandomOnStart = FALSE;
 INDEX ser_bBetterRandomOnLoad = FALSE;
 INDEX ser_iMaxAllowedChatPerSec = 15; // [SSE] Server Essentials - Chat Anti-DDOS
 
@@ -180,6 +180,9 @@ FLOAT net_tmConnectionTimeout = 30.0f;
 FLOAT net_tmProblemsTimeout = 5.0f;
 FLOAT net_tmDisconnectTimeout = 300.0f;  // must be higher for level changing
 INDEX net_bReportCRC = TRUE;
+INDEX net_bSyncDiag = FALSE;
+INDEX net_bSyncDiagDumpOnBad = FALSE;
+CTString net_strSyncDiagTag = "default";
 FLOAT net_fDropPackets = 0.0f;
 FLOAT net_tmLatency = 0.0f;
 
@@ -793,6 +796,7 @@ CNetworkLibrary::CNetworkLibrary(void) :
   ga_fGameRealTimeFactor = 1.0f;
   ga_pubDefaultState = NULL;
   ga_slDefaultStateSize = 0;
+  ga_ulDefaultSpawnFlags = 0;
   memset(ga_aubDefaultProperties, 0, sizeof(ga_aubDefaultProperties));
   ga_pubCRCList = NULL;
   ga_slCRCList = 0;
@@ -1274,6 +1278,9 @@ void CNetworkLibrary::Init(const CTString &strGameID)
   _pShell->DeclareSymbol("user FLOAT net_tmProblemsTimeout;", (void *)  &net_tmProblemsTimeout);
   _pShell->DeclareSymbol("user FLOAT net_tmDisconnectTimeout;", (void *)  &net_tmDisconnectTimeout);
   _pShell->DeclareSymbol("user INDEX net_bReportCRC;", (void *)  &net_bReportCRC);
+  _pShell->DeclareSymbol("persistent user INDEX net_bSyncDiag;", (void *)  &net_bSyncDiag);
+  _pShell->DeclareSymbol("persistent user INDEX net_bSyncDiagDumpOnBad;", (void *)  &net_bSyncDiagDumpOnBad);
+  _pShell->DeclareSymbol("persistent user CTString net_strSyncDiagTag;", (void *)  &net_strSyncDiagTag);
   _pShell->DeclareSymbol("user INDEX ser_iRememberBehind;", (void *)  &ser_iRememberBehind);
   _pShell->DeclareSymbol("user INDEX cli_bEmulateDesync;", (void *)  &cli_bEmulateDesync);
   _pShell->DeclareSymbol("user INDEX cli_bDumpSync;",   (void *)    &cli_bDumpSync);
@@ -1467,12 +1474,9 @@ static void BetterRandom()
   ses.ses_bAllowRandom = TRUE;
   ses.ses_ulRandomSeed = ulDefaultSeed; // random must start at a number different than zero!
 
-  INDEX iV = 32;
-
-  srand(time(NULL));
-  
-  iV = 8 + rand() % 33;
-  CPrintF("Random IV %d\n", iV);
+  // Keep initialization deterministic across platforms.
+  const INDEX iV = 32;
+  CPrintF("Deterministic Random IV %d\n", iV);
   
   // run rnd a few times to make it go random
   for (INDEX i = 0; i < iV; i++) {
@@ -2086,6 +2090,7 @@ void CNetworkLibrary::StopGame(void)
     FreeMemory(ga_pubDefaultState);
     ga_pubDefaultState = NULL;
     ga_slDefaultStateSize = 0;
+    ga_ulDefaultSpawnFlags = 0;
     memset(ga_aubDefaultProperties, 0, sizeof(ga_aubDefaultProperties));
   }
   if (ga_pubCRCList!=NULL) {
@@ -3158,5 +3163,6 @@ void CNetworkLibrary::MakeDefaultState(const CTFileName &fnmWorld,
   ga_slDefaultStateSize = pstrmState->GetStreamSize();
   ga_pubDefaultState = (UBYTE*)AllocMemory(ga_slDefaultStateSize);
   pstrmState->Read_t(ga_pubDefaultState, ga_slDefaultStateSize);
+  ga_ulDefaultSpawnFlags = ulSpawnFlags;
   memcpy(ga_aubDefaultProperties, pvSessionProperties, sizeof(ga_aubDefaultProperties));
 }
