@@ -1,6 +1,7 @@
 package com.github.aarcangeli.serioussamandroid;
 
 import android.os.Bundle;
+import android.content.Intent;
 import android.preference.CheckBoxPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
@@ -27,6 +28,7 @@ public class SettingsActivity extends PreferenceActivity {
 			final CheckBoxPreference useVolumeKeys = (CheckBoxPreference) findPreference("useVolumeKeys");
 			final Preference volumeUpAction = findPreference("volumeUpAction");
 			final Preference volumeDownAction = findPreference("volumeDownAction");
+			final Preference controllerBindings = findPreference("controllerBindings");
 			
 			if (useGyroscope != null && gyroSensibility != null) {
 				gyroSensibility.setEnabled(useGyroscope.isChecked());
@@ -58,6 +60,16 @@ public class SettingsActivity extends PreferenceActivity {
 					public boolean onPreferenceChange(Preference preference, Object newValue) {
 						volumeUpAction.setEnabled((Boolean) newValue);
 						volumeDownAction.setEnabled((Boolean) newValue);
+						return true;
+					}
+				});
+			}
+
+			if (controllerBindings != null) {
+				controllerBindings.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+					@Override
+					public boolean onPreferenceClick(Preference preference) {
+						startActivity(new Intent(getActivity(), GamepadBindingsActivity.class));
 						return true;
 					}
 				});

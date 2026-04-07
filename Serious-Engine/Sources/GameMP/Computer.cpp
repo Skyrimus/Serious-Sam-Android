@@ -265,6 +265,24 @@ void NextMessage(void)
   SyncScrollWithActive();
 }
 
+static void PrevMessageGroup(void)
+{
+  INDEX iWanted = (INDEX)_cmtWantedType - 1;
+  if (iWanted < 0) {
+    iWanted = CMT_COUNT - 1;
+  }
+  _cmtWantedType = (CompMsgType)iWanted;
+}
+
+static void NextMessageGroup(void)
+{
+  INDEX iWanted = (INDEX)_cmtWantedType + 1;
+  if (iWanted >= CMT_COUNT) {
+    iWanted = 0;
+  }
+  _cmtWantedType = (CompMsgType)iWanted;
+}
+
 void MessagesUpDn(INDEX ctLines)
 {
   INDEX ctMessages = _acmMessages.Count();
@@ -978,14 +996,21 @@ void CGame::ComputerKeyDown(MSG msg)
     case 'U':
     case VK_SPACE:
       NextUnreadMessage(); return;
-    // scroll message list
+    // navigate message groups and messages with keys/gamepad
+    case VK_LEFT:
+      PrevMessage(); return;
+    case VK_RIGHT:
+      NextMessage(); return;
+    case VK_UP:
+      PrevMessageGroup(); return;
+    case VK_DOWN:
+      NextMessageGroup(); return;
+    // legacy message list shortcuts
     case 219: PrevMessage(); return;
     case 221: NextMessage(); return;
     // mark current message as read and go to next
     case VK_RETURN: MarkCurrentRead(); NextUnreadMessage(); return;
     // scroll message text
-    case VK_UP:   MessageTextUp(1); return;
-    case VK_DOWN: MessageTextDn(1); return;
     case VK_PRIOR:MessageTextUp(_ctTextLinesOnScreen-1); return;
     case VK_NEXT: MessageTextDn(_ctTextLinesOnScreen-1); return;
     };

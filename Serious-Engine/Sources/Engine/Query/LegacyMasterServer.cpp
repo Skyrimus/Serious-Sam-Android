@@ -117,7 +117,7 @@ extern CHAR* _szIPPortBufferLocal;
 extern INT   _iIPPortBufferLocalLen;
 
 extern BOOL _bServer;
-extern BOOL _bInitialized;
+BOOL _bInitialized; // add extern for build dedicated server
 extern BOOL _bActivated;
 extern BOOL _bActivatedLocal;
 

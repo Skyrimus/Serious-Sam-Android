@@ -18,6 +18,34 @@
 	<string name="controllerTitle">Controller</string>
 	<string name="controllerDeadZone">Dead zone</string>
 	<string name="controllerViewSens">View sensibility</string>
+	<string name="controllerBindingsTitle">Gamepad bindings</string>
+	<string name="controllerBindingsSummary">Remap gameplay buttons and restore the default layout.</string>
+	<string name="gamepad_bindings_description">Tap an action, then press a gamepad button.</string>
+	<string name="gamepad_bindings_capture_message">Press a button on the gamepad to bind it to this action.</string>
+	<string name="gamepad_bindings_reset">Reset to default layout</string>
+	<string name="gamepad_bindings_reset_done">Gamepad layout reset.</string>
+	<string name="gamepad_bindings_assigned">%1$s: %2$s</string>
+	<string name="gamepad_button_unassigned">Unassigned</string>
+	<string name="gamepad_button_dpad_up">D-pad Up</string>
+	<string name="gamepad_button_dpad_down">D-pad Down</string>
+	<string name="gamepad_button_dpad_left">D-pad Left</string>
+	<string name="gamepad_button_dpad_right">D-pad Right</string>
+	<string name="gamepad_button_back">Back</string>
+	<string name="gamepad_action_fire">Fire</string>
+	<string name="gamepad_action_use">Use</string>
+	<string name="gamepad_action_jump">Jump</string>
+	<string name="gamepad_action_crouch">Crouch</string>
+	<string name="gamepad_action_prev_weapon">Previous weapon</string>
+	<string name="gamepad_action_next_weapon">Next weapon</string>
+	<string name="gamepad_action_serious_bomb">Serious bomb</string>
+	<string name="gamepad_action_computer">Computer</string>
+	<string name="gamepad_action_pause_menu">Pause menu</string>
+	<string name="updater_title">Update Available</string>
+	<string name="updater_message">A new game update is available. Download it now?</string>
+	<string name="updater_download">Download</string>
+	<string name="updater_download_failed">Failed to download the update.</string>
+	<string name="updater_install_failed">Failed to start update installation.</string>
+	<string name="updater_enable_unknown_sources">Allow app installs for this game, then try the update again.</string>
 	
 	<string name="gyroTitle">Use Gyroscope</string>
 	<string name="gyroDescription">Tilts the device to move the view.</string>
@@ -83,4 +111,9 @@
 		<item>On (show version, fps, ping)</item>
 		<item>Off</item>
     </string-array>
+
+	<string name="notification_channel_name">Announcements</string>
+	<string name="notification_channel_desc">Game news and updates</string>
+	<string name="notification_title">Serious Sam VR Port by Skyrimus</string>
+	<string name="notification_text">Classic Serious Sam TFE/TSE that you installed will soon be released in VR!\n\nSubscribe to the Telegram channel to follow news.\n\nTap to open the Telegram channel of the Serious Sam Classic VR developer.</string>
 </resources>

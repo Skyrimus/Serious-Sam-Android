@@ -11,7 +11,7 @@ include(compilerFlags)
 option(FIRST_ENCOUNTER "Compile a The First Encounter version" OFF)
 
 # build options
-option(STATIC_LINKING "Buils a single .so file" ON)
+option(STATIC_LINKING "Buils a single .so file" OFF)
 option(ENABLE_NETWORK "Enable network multiplayer mode (beta)" ON)
 option(ENABLE_SPLITSCREEN "Enable splitscreen mode (not working)" OFF)
 option(DISABLE_NETSETTINGS "Will skip network settings option" OFF)

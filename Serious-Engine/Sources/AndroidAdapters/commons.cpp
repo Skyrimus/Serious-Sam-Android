@@ -2,8 +2,10 @@
 #include <Engine/Base/ErrorReporting.h>
 #include <time.h>
 #include <AndroidAdapters/binding-callbacks.h>
+#include <pthread.h>
 
 BindingCallbacks g_cb {};
+pthread_mutex_t g_inputMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int64_t getTimeNsec() {
     struct timespec now;

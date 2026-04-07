@@ -5824,27 +5824,25 @@ void Particles_RunAfterBurner(CEntity *pen, FLOAT tmEnd, FLOAT fStretch, INDEX i
   Particle_Flush();
 }
 
-void Particles_Fireworks01(CEmiter &em)
-{
-  Particle_PrepareTexture(&_toStar01, PBT_ADDALPHA);
-  Particle_SetTexturePart( 512, 512, 0, 0);
+void Particles_Fireworks01(CEmiter &em) {
+    Particle_PrepareTexture(&_toStar01, PBT_ADDALPHA);
+    Particle_SetTexturePart(512, 512, 0, 0);
 
-  FLOAT tmNow = _pTimer->GetLerpedCurrentTick();
+    FLOAT tmNow = _pTimer->GetLerpedCurrentTick();
 
-  CTextureData *pTD = (CTextureData *) _toFireworks01Gradient.GetData();
-  ULONG *pcol=pTD->GetRowPointer(em.em_iGlobal);
+    CTextureData *pTD = (CTextureData *) _toFireworks01Gradient.GetData();
+    ULONG *pcol = pTD->GetRowPointer(em.em_iGlobal);
 
-  FLOAT fLerpFactor=_pTimer->GetLerpFactor();
-  for(INDEX i=0; i<em.em_aepParticles.Count(); i++)
-  {
-    const CEmittedParticle &ep=em.em_aepParticles[i];
-    if(ep.ep_tmEmitted<0) continue;
-    FLOAT3D vPos=Lerp(ep.ep_vLastPos, ep.ep_vPos, fLerpFactor);
-    FLOAT fRot=Lerp(ep.ep_fLastRot, ep.ep_fRot, fLerpFactor);
-    INDEX iIndex=INDEX((tmNow-ep.ep_tmEmitted)*2.0f/(ep.ep_tmLife)*255.0f)%255;
-    COLOR col=MulColors(ByteSwap(pcol[iIndex]), MulColors(ep.ep_colColor, em.em_colGlobal));
-    Particle_RenderSquare( vPos, ep.ep_fStretch, fRot, col);
-  }
-  // all done
-  Particle_Flush();
+    FLOAT fLerpFactor = _pTimer->GetLerpFactor();
+    for (INDEX i = 0; i < em.em_aepParticles.Count(); i++) {
+        const CEmittedParticle &ep = em.em_aepParticles[i];
+        if (ep.ep_tmEmitted < 0) continue;
+        FLOAT3D vPos = Lerp(ep.ep_vLastPos, ep.ep_vPos, fLerpFactor);
+        FLOAT fRot = Lerp(ep.ep_fLastRot, ep.ep_fRot, fLerpFactor);
+        INDEX iIndex = INDEX((tmNow - ep.ep_tmEmitted) * 2.0f / (ep.ep_tmLife) * 255.0f) % 255;
+        COLOR col = MulColors(ByteSwap(pcol[iIndex]), MulColors(ep.ep_colColor, em.em_colGlobal));
+        Particle_RenderSquare(vPos, ep.ep_fStretch, fRot, col);
+    }
+    // all done
+    Particle_Flush();
 }
