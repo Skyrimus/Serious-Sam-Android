@@ -106,10 +106,6 @@
             android:summary="%s%%"
             android:text="%"
             android:title="@string/controllerViewSens" />
-        <Preference
-            android:key="controllerBindings"
-            android:summary="@string/controllerBindingsSummary"
-            android:title="@string/controllerBindingsTitle" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/debug">
         <CheckBoxPreference

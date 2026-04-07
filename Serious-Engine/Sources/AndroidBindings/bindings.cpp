@@ -19,9 +19,11 @@
 #define ALOGI(...) do{}while(0)
 #endif
 static bool s_detfp_done = false;
+
 void processInputs();
 
 pthread_mutex_t g_mySeriousMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t g_inputMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t g_mySeriousThreadId;
 bool g_gameRunning = false;
@@ -58,7 +60,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSurface_nInitialize(JNIEnv* env, jclass clazz, jstring homeDir_, jstring libDir_) {
+JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSurface_nInitialize(JNIEnv* env, jobject obj, jstring homeDir_, jstring libDir_) {
   g_errorCalllback = &androidReportError;
 
   // set home dir
@@ -77,7 +79,7 @@ JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSu
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_MainActivity_nConfirmEditText(JNIEnv* env, jclass clazz, jstring newText_) {
+JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_MainActivity_nConfirmEditText(JNIEnv* env, jobject obj, jstring newText_) {
   pthread_mutex_lock(&g_mySeriousMutex);
 
   const char *newText = env->GetStringUTFChars(newText_, 0);
@@ -88,7 +90,7 @@ JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_MainActivity
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_MainActivity_nCancelEditText(JNIEnv* env, jclass clazz) {
+JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_MainActivity_nCancelEditText(JNIEnv* env, jobject obj) {
   pthread_mutex_lock(&g_mySeriousMutex);
   g_textCancelled = true;
   pthread_mutex_unlock(&g_mySeriousMutex);
@@ -96,7 +98,7 @@ JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_MainActivity
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_github_aarcangeli_serioussamandroid_MainActivity_setAxisValue(JNIEnv *env, jclass clazz, jint key, jfloat value) {
+Java_com_github_aarcangeli_serioussamandroid_MainActivity_setAxisValue(JNIEnv *env, jobject obj, jint key, jfloat value) {
   ASSERT(key >= 0 && key < 10);
   pthread_mutex_lock(&g_inputMutex);
   g_cb.g_IncomingControls.axisValue[key] = value;
@@ -105,7 +107,7 @@ Java_com_github_aarcangeli_serioussamandroid_MainActivity_setAxisValue(JNIEnv *e
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_github_aarcangeli_serioussamandroid_MainActivity_shiftAxisValue(JNIEnv *env, jclass clazz, jint key, jfloat value) {
+Java_com_github_aarcangeli_serioussamandroid_MainActivity_shiftAxisValue(JNIEnv *env, jobject obj, jint key, jfloat value) {
   ASSERT(key >= 0 && key < 10);
   pthread_mutex_lock(&g_inputMutex);
   g_cb.g_IncomingControls.shiftAxisValue[key] += value;
@@ -118,9 +120,9 @@ constexpr unsigned int hash(const char *s, int off = 0) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_github_aarcangeli_serioussamandroid_MainActivity_nTouchKeyEvent(JNIEnv *env, jclass clazz, jstring key_, jint isPressed) {
+Java_com_github_aarcangeli_serioussamandroid_MainActivity_nTouchKeyEvent(JNIEnv *env, jobject obj, jstring key_, jint isPressed) {
 #define BTN_CASE(cod, name) case cod: name = isPressed != 0; break;
-  pthread_mutex_lock(&g_inputMutex);
+  pthread_mutex_lock(&g_mySeriousMutex);
   const char *key = env->GetStringUTFChars(key_, 0);
   switch(hash(key)) {
 	// additional keys
@@ -139,16 +141,15 @@ Java_com_github_aarcangeli_serioussamandroid_MainActivity_nTouchKeyEvent(JNIEnv 
     BTN_CASE(hash("Computer"), g_cb.g_IncomingControls.bComputer)
     BTN_CASE(hash("Start"), g_cb.g_IncomingControls.bStart)
   }
-  env->ReleaseStringUTFChars(key_, key);
-  pthread_mutex_unlock(&g_inputMutex);
+  pthread_mutex_unlock(&g_mySeriousMutex);
 #undef BTN_CASE
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_github_aarcangeli_serioussamandroid_MainActivity_nDispatchKeyEvent(JNIEnv *env, jclass clazz, jint key, jint isPressed) {
+Java_com_github_aarcangeli_serioussamandroid_MainActivity_nDispatchKeyEvent(JNIEnv *env, jobject obj, jint key, jint isPressed) {
 #define BTN_CASE(cod, name) case cod: name = isPressed != 0; break;
-  pthread_mutex_lock(&g_inputMutex);
+  pthread_mutex_lock(&g_mySeriousMutex);
   switch(key) {
 	// Keyboard
 	BTN_CASE(KEYCODE_W, g_cb.g_IncomingControls.bMoveForward)
@@ -158,24 +159,24 @@ Java_com_github_aarcangeli_serioussamandroid_MainActivity_nDispatchKeyEvent(JNIE
 	BTN_CASE(KEYCODE_R, g_cb.g_IncomingControls.bReload)
 	BTN_CASE(KEYCODE_SPACE, g_cb.g_IncomingControls.bMoveUp)
     // Xbox 360
-    BTN_CASE(KEYCODE_BUTTON_R1, g_cb.g_IncomingControls.bWeaponNext)
-    BTN_CASE(KEYCODE_BUTTON_R2, g_cb.g_IncomingControls.bFire)
-    BTN_CASE(KEYCODE_BUTTON_L1, g_cb.g_IncomingControls.bWeaponPrev)
+    BTN_CASE(KEYCODE_BUTTON_R1, g_cb.g_IncomingControls.bFire)
+    BTN_CASE(KEYCODE_BUTTON_R2, g_cb.g_IncomingControls.bUse)
+    BTN_CASE(KEYCODE_BUTTON_L1, g_cb.g_IncomingControls.bWeaponFlip)
     BTN_CASE(KEYCODE_BUTTON_Y, g_cb.g_IncomingControls.bFireBomb)
-    BTN_CASE(KEYCODE_BUTTON_X, g_cb.g_IncomingControls.bUse)
+    BTN_CASE(KEYCODE_BUTTON_X, g_cb.g_IncomingControls.bReload)
     BTN_CASE(KEYCODE_BUTTON_A, g_cb.g_IncomingControls.bMoveUp)
-    BTN_CASE(KEYCODE_BUTTON_THUMBL, g_cb.g_IncomingControls.bMoveDown)
+    BTN_CASE(KEYCODE_BUTTON_B, g_cb.g_IncomingControls.bMoveDown)
     BTN_CASE(KEYCODE_DPAD_LEFT, g_cb.g_IncomingControls.bWeaponPrev)
     BTN_CASE(KEYCODE_DPAD_RIGHT, g_cb.g_IncomingControls.bWeaponNext)
     BTN_CASE(KEYCODE_BACK, g_cb.g_IncomingControls.bComputer)
     BTN_CASE(KEYCODE_BUTTON_START, g_cb.g_IncomingControls.bStart)
   }
-  pthread_mutex_unlock(&g_inputMutex);
+  pthread_mutex_unlock(&g_mySeriousMutex);
 #undef BTN_CASE
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_MainActivity_nShellExecute(JNIEnv* env, jclass clazz, jstring command_) {
+JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_MainActivity_nShellExecute(JNIEnv* env, jobject obj, jstring command_) {
   const char *command = env->GetStringUTFChars(command_, 0);
   pthread_mutex_lock(&g_mySeriousMutex);
 
@@ -221,9 +222,6 @@ void syncSeriousThreads() {
 
     bool running = g_gameRunning;
     ANativeWindow *window = g_currentWindow;
-    if (window) {
-      ANativeWindow_acquire(window);
-    }
     bool somethingChanged = false;
     if (running && window) {
       somethingChanged = g_somethingChanged;
@@ -256,9 +254,6 @@ void syncSeriousThreads() {
     }
 
     if (!running || !window) {
-      if (window) {
-        ANativeWindow_release(window);
-      }
       usleep(50000); // wait for 50 ms
       continue;
     }
@@ -266,8 +261,6 @@ void syncSeriousThreads() {
     if (somethingChanged) {
       g_pvpViewPort->Initialize(window);
     }
-
-    ANativeWindow_release(window);
 
     return;
   };
@@ -340,11 +333,10 @@ void *seriousMain(void *unused) {
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSurface_nSetSurface(JNIEnv* env, jclass clazz, jobject surface) {
+JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSurface_nSetSurface(JNIEnv* env, jobject obj, jobject surface) {
   pthread_mutex_lock(&g_mySeriousMutex);
 
   g_somethingChanged = true;
-  ANativeWindow *previousWindow = g_currentWindow;
   if (surface) {
     g_currentWindow = ANativeWindow_fromSurface(env, surface);
   } else {
@@ -352,13 +344,10 @@ JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSu
   }
 
   pthread_mutex_unlock(&g_mySeriousMutex);
-  if (previousWindow) {
-    ANativeWindow_release(previousWindow);
-  }
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSurface_nOnStart(JNIEnv* env, jclass clazz) {
+JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSurface_nOnStart(JNIEnv* env, jobject obj) {
   // wake up thread
   pthread_mutex_lock(&g_mySeriousMutex);
   g_gameRunning = true;
@@ -367,7 +356,7 @@ JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSu
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSurface_nOnStop(JNIEnv* env, jclass clazz) {
+JNIEXPORT void JNICALL Java_com_github_aarcangeli_serioussamandroid_SeriousSamSurface_nOnStop(JNIEnv* env, jobject obj) {
   pthread_mutex_lock(&g_mySeriousMutex);
   g_gameRunning = false;
   if (_pTimer) _pTimer->tm_bPaused = true;

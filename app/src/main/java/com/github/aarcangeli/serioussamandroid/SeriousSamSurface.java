@@ -93,9 +93,6 @@ public class SeriousSamSurface extends SurfaceView implements GestureDetector.On
 
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
-		if (activity != null && activity.handleMouseTouchEvent(event)) {
-			return true;
-		}
 		if (android.os.Build.VERSION.SDK_INT >= 21) {
 			requestUnbufferedDispatch(event);
 		}
@@ -121,14 +118,6 @@ public class SeriousSamSurface extends SurfaceView implements GestureDetector.On
 		}
 		gestureDetector.onTouchEvent(event);
 		return true;
-	}
-
-	@Override
-	public boolean onGenericMotionEvent(MotionEvent event) {
-		if (activity != null && activity.handleMouseMotionEvent(event, false)) {
-			return true;
-		}
-		return super.onGenericMotionEvent(event);
 	}
 
 	@Override

@@ -327,17 +327,6 @@ void MenuEvent(void* pArgs) {
   }
 }
 
-void ComputerEvent(void* pArgs) {
-  INDEX vk = NEXTARGUMENT(INDEX);
-
-  if (_pGame->gm_csComputerState != CS_OFF && _pGame->gm_csComputerState != CS_ONINBACKGROUND) {
-    MSG msg;
-    msg.message = WM_KEYDOWN;
-    msg.wParam = vk;
-    _pGame->ComputerKeyDown(msg);
-  }
-}
-
 void MenuChar(void* pArgs) {
   INDEX keyCode = NEXTARGUMENT(INDEX);
   MSG msg;
@@ -651,7 +640,6 @@ BOOL Init()
   _pShell->DeclareSymbol("user void TouchUp(INDEX, INDEX);", (void *) &TouchUp);
   _pShell->DeclareSymbol("user void SaveOptions();", (void *) &SaveOptions);
   _pShell->DeclareSymbol("user void MenuEvent(INDEX);", (void *) &MenuEvent);
-  _pShell->DeclareSymbol("user void ComputerEvent(INDEX);", (void *) &ComputerEvent);
   _pShell->DeclareSymbol("user void MenuChar(INDEX);", (void *) &MenuChar);
   _pShell->DeclareSymbol("user void GoMenuBack();", (void *) &GoMenuBack);
   _pShell->DeclareSymbol("user void ToggleConsole();", (void *) &ToggleConsole);
@@ -1258,7 +1246,7 @@ void StartNewMode( enum GfxAPIType eGfxAPI, INDEX iAdapter, PIX pixSizeI, PIX pi
   _tmDisplayModeChanged = _pTimer->GetRealTimeTick();
 }
 
-// set controls from java (caller holds g_inputMutex)
+// set controls from java (mutex locked)
 void setControls(PlayerControls &ctrls) {
   static BOOL bStartLast = false;
 
@@ -1296,10 +1284,6 @@ void setControls(PlayerControls &ctrls) {
       playerCtrl.axisValue[i] += ctrls.shiftAxisValue[i];
       ctrls.shiftAxisValue[i] = 0;
     }
-
-    // One-shot controls (e.g. mouse wheel weapon switch).
-    ctrls.bWeaponNext = false;
-    ctrls.bWeaponPrev = false;
   }
 }
 
@@ -1349,9 +1333,7 @@ void seriousSubMain() {
 
   while(_bRunning && !_fnmModToLoad.Length()) {
     g_cb.syncSeriousThreads();
-    pthread_mutex_lock(&g_inputMutex);
-    setControls(g_cb.g_IncomingControls);
-    pthread_mutex_unlock(&g_inputMutex);
+	setControls(g_cb.g_IncomingControls);
     // when all messages are removed, window has surely changed
     _bWindowChanging = FALSE;
 

@@ -27,8 +27,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.annotation.NonNull;
@@ -38,10 +36,8 @@ import androidx.core.content.ContextCompat;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
-import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -74,7 +70,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Locale;
 import java.util.List;
-import java.util.HashMap;
 import java.net.*;
 
 import java.util.Enumeration;
@@ -134,23 +129,6 @@ public class MainActivity extends Activity {
 	public int transparency;
 	private boolean useVolumeKeys;
 	public String volumeUpKey, volumeDownKey;
-	private boolean menuAxisUpPressed = false;
-	private boolean menuAxisDownPressed = false;
-	private boolean menuAxisLeftPressed = false;
-	private boolean menuAxisRightPressed = false;
-	private boolean computerLookUpPressed = false;
-	private boolean computerLookDownPressed = false;
-	private boolean controllerFirePressed = false;
-	private boolean mouseMotionInitialized = false;
-	private boolean mouseCaptureAvailable = true;
-	private float lastMouseX = 0.0f;
-	private float lastMouseY = 0.0f;
-	private int controllerPauseKeyCode = KeyEvent.KEYCODE_BUTTON_START;
-	private final HashMap<Integer, String> controllerBindings = new HashMap<Integer, String>();
-	private static final int CONTROLLER_FIRE_VIBRATION_MS = 20;
-	private static final int CONTROLLER_FIRE_VIBRATION_AMPLITUDE = 180;
-	private static final int CONTROLLER_MENU_VIBRATION_MS = 12;
-	private static final int CONTROLLER_MENU_VIBRATION_AMPLITUDE = 120;
 	private InputProcessor processor = new InputProcessor();
 	private InputMethodManager inputMethodManager;
 	private KeyboardHeightProvider keyboardHeightProvider;
@@ -259,7 +237,6 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.main_screen);
 		glSurfaceView = findViewById(R.id.main_content);
 		glSurfaceView.setActivity(this);
-		setupMouseCaptureListener();
 		
 		Button loadBtn = findViewById(R.id.buttonLoad);
 		loadBtn.setOnLongClickListener(new View.OnLongClickListener() {
@@ -382,7 +359,7 @@ public class MainActivity extends Activity {
 		checkUpdate();
 
 		if (!hasStoragePermission(this)) {
-			finish();
+			ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
 		} else {
 			CacheDownloader showalarm = new CacheDownloader(this);
 			showalarm.checkFolderAndDownloadFile(new CacheDownloader.DownloadCallback() {
@@ -642,16 +619,12 @@ public class MainActivity extends Activity {
 	@Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
 	public void onConsoleVisibilityChange(StateChangeEvent event) {
 		gameState = event.state;
-		resetMenuAxisState();
-		controllerFirePressed = false;
-		resetMouseMotionState();
 		if (event.bombs > 0) {
 			bombs = event.bombs;
 		} else {
 			bombs = 0;
 		}
 		updateSoftKeyboardVisible();
-		updateMouseCaptureState();
 	}
 
 	@Subscribe(threadMode = ThreadMode.MAIN)
@@ -699,16 +672,11 @@ public class MainActivity extends Activity {
 		glSurfaceView.syncOptions();
 		syncOptions();
 		keyboardHeightProvider.onResume();
-		updateMouseCaptureState();
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		controllerFirePressed = false;
-		releaseMouseButtons();
-		resetMouseMotionState();
-		updateMouseCaptureState();
 		glSurfaceView.stop();
 		executeShell("HideConsole();");
 		executeShell("HideComputer();");
@@ -742,465 +710,28 @@ public class MainActivity extends Activity {
 	}
 
 	private static boolean hasStoragePermission(Context context) {
-		if (Build.VERSION.SDK_INT >= 30) {
-			return Environment.isExternalStorageManager();
-		}
 		return ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
 	}
 
 	@Override
 	public boolean dispatchGenericMotionEvent(MotionEvent ev) {
-		int source = ev.getSource();
-		if (isMouseSource(source) && handleMouseMotionEvent(ev, false)) {
-			return true;
-		}
-		boolean isController = isControllerSource(source);
-		if (!isController) {
-			return super.dispatchGenericMotionEvent(ev);
-		}
-
 		switch(ev.getActionMasked()) {
 		case MotionEvent.ACTION_MOVE:
-			if (gameState == GameState.MENU || gameState == GameState.CONSOLE) {
-				handleMenuControllerNavigation(ev);
-				return true;
-			}
-			if (gameState == GameState.COMPUTER) {
-				handleComputerControllerNavigation(ev);
-				return true;
-			}
-			resetMenuAxisState();
-			float moveFb = getControllerAxisValue(ev, MotionEvent.AXIS_Y);
-			float moveLr = getControllerAxisValue(ev, MotionEvent.AXIS_X);
-			float lookLr = getControllerAxisValue(ev, MotionEvent.AXIS_Z);
-			float lookUd = getControllerAxisValue(ev, MotionEvent.AXIS_RZ);
-
-				setAxisValue(AXIS_MOVE_FB, applyDeadZone(-moveFb));
-				setAxisValue(AXIS_MOVE_LR, applyDeadZone(-moveLr));
-				setAxisValue(AXIS_LOOK_LR, applyDeadZone(-lookLr) * MULT_VIEW_CONTROLLER * ctrlAimSensibility);
-				setAxisValue(AXIS_LOOK_UD, applyDeadZone(-lookUd) * MULT_VIEW_CONTROLLER * ctrlAimSensibility);
-				handleControllerAnalogBindings(ev);
-				break;
+			setAxisValue(AXIS_MOVE_FB, applyDeadZone(-ev.getAxisValue(MotionEvent.AXIS_Y)));
+			setAxisValue(AXIS_MOVE_LR, applyDeadZone(-ev.getAxisValue(MotionEvent.AXIS_X)));
+			setAxisValue(AXIS_LOOK_LR, applyDeadZone(-ev.getAxisValue(MotionEvent.AXIS_Z)) * MULT_VIEW_CONTROLLER * ctrlAimSensibility);
+			setAxisValue(AXIS_LOOK_UD, applyDeadZone(-ev.getAxisValue(MotionEvent.AXIS_RZ)) * MULT_VIEW_CONTROLLER * ctrlAimSensibility);
+			nDispatchKeyEvent(KeyEvent.KEYCODE_BUTTON_R2, ev.getAxisValue(MotionEvent.AXIS_RTRIGGER) > .5f ? 1 : 0);
+			nDispatchKeyEvent(KeyEvent.KEYCODE_BUTTON_L2, ev.getAxisValue(MotionEvent.AXIS_RTRIGGER) < -.5f ? 1 : 0);
+			nDispatchKeyEvent(KeyEvent.KEYCODE_DPAD_LEFT, ev.getAxisValue(MotionEvent.AXIS_HAT_X) < -.5f ? 1 : 0);
+			nDispatchKeyEvent(KeyEvent.KEYCODE_DPAD_RIGHT, ev.getAxisValue(MotionEvent.AXIS_HAT_X) > .5f ? 1 : 0);
+			nDispatchKeyEvent(KeyEvent.KEYCODE_DPAD_UP, ev.getAxisValue(MotionEvent.AXIS_HAT_Y) < -.5f ? 1 : 0);
+			nDispatchKeyEvent(KeyEvent.KEYCODE_DPAD_DOWN, ev.getAxisValue(MotionEvent.AXIS_HAT_Y) > .5f ? 1 : 0);
+			break;
 		default:
 			return false;
 		}
 		return true;
-	}
-
-	private void resetMenuAxisState() {
-		menuAxisUpPressed = false;
-		menuAxisDownPressed = false;
-		menuAxisLeftPressed = false;
-		menuAxisRightPressed = false;
-		computerLookUpPressed = false;
-		computerLookDownPressed = false;
-	}
-
-	private void resetMouseMotionState() {
-		mouseMotionInitialized = false;
-		lastMouseX = 0.0f;
-		lastMouseY = 0.0f;
-	}
-
-	private void disableMouseCapture(Throwable error) {
-		mouseCaptureAvailable = false;
-		Log.w(TAG, "Disabling mouse capture due to device/framework error", error);
-	}
-
-	private void setupMouseCaptureListener() {
-		if (glSurfaceView == null || Build.VERSION.SDK_INT < 26 || !mouseCaptureAvailable) {
-			return;
-		}
-		try {
-			glSurfaceView.setOnCapturedPointerListener(new View.OnCapturedPointerListener() {
-				@Override
-				public boolean onCapturedPointer(View view, MotionEvent event) {
-					try {
-						return handleCapturedMouseEvent(event);
-					} catch (Throwable error) {
-						disableMouseCapture(error);
-						return false;
-					}
-				}
-			});
-		} catch (Throwable error) {
-			disableMouseCapture(error);
-		}
-	}
-
-	private void releaseMouseButtons() {
-		nSendMouseNative(0, MotionEvent.ACTION_UP, 0.0f);
-	}
-
-	private void reloadControllerBindings(SharedPreferences preferences) {
-		controllerBindings.clear();
-		controllerPauseKeyCode = GamepadBindings.getBoundKeyCode(preferences, GamepadBindings.ACTION_PAUSE_MENU);
-		for (String action : GamepadBindings.ACTIONS) {
-			int keyCode = GamepadBindings.getBoundKeyCode(preferences, action);
-			if (!GamepadBindings.ACTION_PAUSE_MENU.equals(action) && keyCode != KeyEvent.KEYCODE_UNKNOWN) {
-				controllerBindings.put(keyCode, action);
-			}
-		}
-	}
-
-	private void handleMenuControllerNavigation(MotionEvent event) {
-		float axisX = getControllerAxisValue(event, MotionEvent.AXIS_X);
-		float axisY = getControllerAxisValue(event, MotionEvent.AXIS_Y);
-		float hatX = getControllerAxisValue(event, MotionEvent.AXIS_HAT_X);
-		float hatY = getControllerAxisValue(event, MotionEvent.AXIS_HAT_Y);
-
-		float horizontal = Math.abs(hatX) > Math.abs(axisX) ? hatX : axisX;
-		float vertical = Math.abs(hatY) > Math.abs(axisY) ? hatY : axisY;
-		final float threshold = 0.5f;
-
-		updateMenuAxisState(event.getDeviceId(), vertical < -threshold, VK_UP);
-		updateMenuAxisState(event.getDeviceId(), vertical > threshold, VK_DOWN);
-		updateMenuAxisState(event.getDeviceId(), horizontal < -threshold, VK_LEFT);
-		updateMenuAxisState(event.getDeviceId(), horizontal > threshold, VK_RIGHT);
-	}
-
-	private void handleComputerControllerNavigation(MotionEvent event) {
-		float axisX = getControllerAxisValue(event, MotionEvent.AXIS_X);
-		float axisY = getControllerAxisValue(event, MotionEvent.AXIS_Y);
-		float lookY = getControllerAxisValue(event, MotionEvent.AXIS_RZ);
-		float hatX = getControllerAxisValue(event, MotionEvent.AXIS_HAT_X);
-		float hatY = getControllerAxisValue(event, MotionEvent.AXIS_HAT_Y);
-
-		float horizontal = Math.abs(hatX) > Math.abs(axisX) ? hatX : axisX;
-		float vertical = Math.abs(hatY) > Math.abs(axisY) ? hatY : axisY;
-		final float threshold = 0.5f;
-
-		updateComputerAxisState(event.getDeviceId(), vertical < -threshold, VK_UP);
-		updateComputerAxisState(event.getDeviceId(), vertical > threshold, VK_DOWN);
-		updateComputerAxisState(event.getDeviceId(), horizontal < -threshold, VK_LEFT);
-		updateComputerAxisState(event.getDeviceId(), horizontal > threshold, VK_RIGHT);
-		updateComputerLookAxisState(event.getDeviceId(), lookY < -threshold, VK_PRIOR);
-		updateComputerLookAxisState(event.getDeviceId(), lookY > threshold, VK_NEXT);
-	}
-
-	private void updateComputerAxisState(int deviceId, boolean active, int vk) {
-		boolean previous;
-		if (vk == VK_UP) {
-			previous = menuAxisUpPressed;
-			menuAxisUpPressed = active;
-		} else if (vk == VK_DOWN) {
-			previous = menuAxisDownPressed;
-			menuAxisDownPressed = active;
-		} else if (vk == VK_LEFT) {
-			previous = menuAxisLeftPressed;
-			menuAxisLeftPressed = active;
-		} else {
-			previous = menuAxisRightPressed;
-			menuAxisRightPressed = active;
-		}
-
-		if (active && !previous) {
-			vibrateController(deviceId, CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-			executeShell("ComputerEvent(" + vk + ")");
-		}
-	}
-
-	private void updateComputerLookAxisState(int deviceId, boolean active, int vk) {
-		boolean previous;
-		if (vk == VK_PRIOR) {
-			previous = computerLookUpPressed;
-			computerLookUpPressed = active;
-		} else {
-			previous = computerLookDownPressed;
-			computerLookDownPressed = active;
-		}
-
-		if (active && !previous) {
-			vibrateController(deviceId, CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-			executeShell("ComputerEvent(" + vk + ")");
-		}
-	}
-
-	private void handleControllerAnalogBindings(MotionEvent event) {
-		float lTrigger = getControllerAxisValue(event, MotionEvent.AXIS_LTRIGGER);
-		float rTrigger = getControllerAxisValue(event, MotionEvent.AXIS_RTRIGGER);
-		float hatX = getControllerAxisValue(event, MotionEvent.AXIS_HAT_X);
-		float hatY = getControllerAxisValue(event, MotionEvent.AXIS_HAT_Y);
-
-		dispatchControllerAction(KeyEvent.KEYCODE_BUTTON_L2, lTrigger > .5f, event.getDeviceId());
-		dispatchControllerAction(KeyEvent.KEYCODE_BUTTON_R2, rTrigger > .5f, event.getDeviceId());
-		dispatchControllerAction(KeyEvent.KEYCODE_DPAD_LEFT, hatX < -.5f, event.getDeviceId());
-		dispatchControllerAction(KeyEvent.KEYCODE_DPAD_RIGHT, hatX > .5f, event.getDeviceId());
-		dispatchControllerAction(KeyEvent.KEYCODE_DPAD_UP, hatY < -.5f, event.getDeviceId());
-		dispatchControllerAction(KeyEvent.KEYCODE_DPAD_DOWN, hatY > .5f, event.getDeviceId());
-	}
-
-	private void updateMenuAxisState(int deviceId, boolean active, int vk) {
-		boolean previous;
-		if (vk == VK_UP) {
-			previous = menuAxisUpPressed;
-			menuAxisUpPressed = active;
-		} else if (vk == VK_DOWN) {
-			previous = menuAxisDownPressed;
-			menuAxisDownPressed = active;
-		} else if (vk == VK_LEFT) {
-			previous = menuAxisLeftPressed;
-			menuAxisLeftPressed = active;
-		} else {
-			previous = menuAxisRightPressed;
-			menuAxisRightPressed = active;
-		}
-
-		if (active && !previous) {
-			vibrateController(deviceId, CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-			executeShell("MenuEvent(" + vk + ")");
-		}
-	}
-
-	private boolean isControllerSource(int source) {
-		return ((source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK)
-				|| ((source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD)
-				|| ((source & InputDevice.SOURCE_DPAD) == InputDevice.SOURCE_DPAD);
-	}
-
-	private boolean isMouseSource(int source) {
-		return (source & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE;
-	}
-
-	private void handleControllerFireState(int deviceId, boolean pressed) {
-		if (pressed && !controllerFirePressed) {
-			vibrateController(deviceId, CONTROLLER_FIRE_VIBRATION_MS, CONTROLLER_FIRE_VIBRATION_AMPLITUDE);
-		}
-		controllerFirePressed = pressed;
-	}
-
-	private void handleMouseLookDelta(float dx, float dy) {
-		if (dx == 0.0f && dy == 0.0f) {
-			return;
-		}
-		shiftAxisValue(AXIS_LOOK_LR, -dx * MULT_VIEW_TRACKER * aimViewSensibility);
-		shiftAxisValue(AXIS_LOOK_UD, -dy * MULT_VIEW_TRACKER * aimViewSensibility);
-	}
-
-	private boolean handleCapturedMouseEvent(MotionEvent event) {
-		if (gameState != GameState.NORMAL || !mouseCaptureAvailable) {
-			return false;
-		}
-		if (Build.VERSION.SDK_INT >= 21) {
-			glSurfaceView.requestUnbufferedDispatch(event);
-		}
-
-		float x = event.getX();
-		float y = event.getY();
-		float scroll = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
-
-		handleMouseLookDelta(x, y);
-		nSendMouseNative(event.getButtonState(), event.getActionMasked(), scroll);
-		return true;
-	}
-
-	private boolean handleMouseInMenuLikeState(MotionEvent event) {
-		int x = (int) (event.getX() * glSurfaceView.getScale());
-		int y = (int) (event.getY() * glSurfaceView.getScale());
-		switch (event.getActionMasked()) {
-			case MotionEvent.ACTION_HOVER_MOVE:
-			case MotionEvent.ACTION_MOVE:
-				executeShell("TouchMove(" + x + ", " + y + ");");
-				return true;
-			case MotionEvent.ACTION_DOWN:
-				executeShell("TouchDown(" + x + ", " + y + ");");
-				return true;
-			case MotionEvent.ACTION_BUTTON_PRESS:
-				if (event.getActionButton() == MotionEvent.BUTTON_PRIMARY) {
-					executeShell("TouchDown(" + x + ", " + y + ");");
-				}
-				return true;
-			case MotionEvent.ACTION_BUTTON_RELEASE:
-				if (event.getActionButton() == MotionEvent.BUTTON_PRIMARY) {
-					executeShell("TouchUp(" + x + ", " + y + ");");
-				}
-				return true;
-			case MotionEvent.ACTION_UP:
-				executeShell("TouchUp(" + x + ", " + y + ");");
-				return true;
-			default:
-				return false;
-		}
-	}
-
-	private boolean handleMouseInGame(MotionEvent event, boolean captured) {
-		switch (event.getActionMasked()) {
-			case MotionEvent.ACTION_MOVE:
-			case MotionEvent.ACTION_HOVER_MOVE: {
-				if (Build.VERSION.SDK_INT >= 21) {
-					glSurfaceView.requestUnbufferedDispatch(event);
-				}
-				if (captured) {
-					return handleCapturedMouseEvent(event);
-				}
-				float dx;
-				float dy;
-				float x = event.getX();
-				float y = event.getY();
-				if (!mouseMotionInitialized) {
-					lastMouseX = x;
-					lastMouseY = y;
-					mouseMotionInitialized = true;
-					return true;
-				}
-					dx = x - lastMouseX;
-					dy = y - lastMouseY;
-					lastMouseX = x;
-					lastMouseY = y;
-				handleMouseLookDelta(dx, dy);
-				nSendMouseNative(event.getButtonState(), event.getActionMasked(), 0.0f);
-				return true;
-			}
-			case MotionEvent.ACTION_BUTTON_PRESS:
-			case MotionEvent.ACTION_BUTTON_RELEASE:
-			case MotionEvent.ACTION_DOWN:
-			case MotionEvent.ACTION_UP:
-				nSendMouseNative(event.getButtonState(), event.getActionMasked(), 0.0f);
-				return true;
-			case MotionEvent.ACTION_SCROLL: {
-				float scroll = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
-				nSendMouseNative(event.getButtonState(), event.getActionMasked(), scroll);
-				return true;
-			}
-			default:
-				return false;
-		}
-	}
-
-	public boolean handleMouseMotionEvent(MotionEvent event, boolean captured) {
-		if (!isMouseSource(event.getSource())) {
-			return false;
-		}
-
-		if (gameState == GameState.MENU || gameState == GameState.CONSOLE || gameState == GameState.COMPUTER) {
-			return handleMouseInMenuLikeState(event);
-		}
-		if (gameState == GameState.NORMAL) {
-			return handleMouseInGame(event, captured);
-		}
-		return false;
-	}
-
-	public boolean handleMouseTouchEvent(MotionEvent event) {
-		if (!isMouseSource(event.getSource())) {
-			return false;
-		}
-		if (gameState == GameState.MENU || gameState == GameState.CONSOLE || gameState == GameState.COMPUTER) {
-			return handleMouseInMenuLikeState(event);
-		}
-		if (gameState == GameState.NORMAL) {
-			return handleMouseInGame(event, false);
-		}
-		return false;
-	}
-
-	private void updateMouseCaptureState() {
-		if (glSurfaceView == null) {
-			return;
-		}
-
-		if (Build.VERSION.SDK_INT >= 24) {
-			try {
-				PointerIcon icon = PointerIcon.getSystemIcon(this,
-						gameState == GameState.NORMAL ? PointerIcon.TYPE_NULL : PointerIcon.TYPE_DEFAULT);
-				glSurfaceView.setPointerIcon(icon);
-			} catch (Throwable error) {
-				Log.w(TAG, "PointerIcon update failed", error);
-			}
-		}
-
-		if (Build.VERSION.SDK_INT >= 26 && mouseCaptureAvailable) {
-			boolean shouldCapture = hasWindowFocus() && gameState == GameState.NORMAL;
-			try {
-				if (shouldCapture) {
-					glSurfaceView.requestFocus();
-					glSurfaceView.post(new Runnable() {
-						@Override
-						public void run() {
-							if (!mouseCaptureAvailable) {
-								return;
-							}
-							try {
-								if (hasWindowFocus() && gameState == GameState.NORMAL) {
-									glSurfaceView.requestPointerCapture();
-								}
-							} catch (Throwable error) {
-								disableMouseCapture(error);
-							}
-						}
-					});
-				} else if (glSurfaceView.hasPointerCapture()) {
-					glSurfaceView.releasePointerCapture();
-				}
-			} catch (Throwable error) {
-				disableMouseCapture(error);
-			}
-		}
-
-		if (gameState != GameState.NORMAL) {
-			releaseMouseButtons();
-			resetMouseMotionState();
-		}
-	}
-
-	private boolean dispatchControllerAction(int keyCode, boolean pressed, int deviceId) {
-		String action = controllerBindings.get(keyCode);
-		if (action == null) {
-			return false;
-		}
-
-		if (GamepadBindings.ACTION_FIRE.equals(action)) {
-			handleControllerFireState(deviceId, pressed);
-		}
-
-		nTouchKeyEvent(action, pressed ? 1 : 0);
-		return true;
-	}
-
-	private void vibrateController(int deviceId, int durationMs, int amplitude) {
-		InputDevice device = InputDevice.getDevice(deviceId);
-		if (device == null) {
-			return;
-		}
-
-		Vibrator vibrator = device.getVibrator();
-		if (vibrator == null || !vibrator.hasVibrator()) {
-			return;
-		}
-
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			vibrator.vibrate(VibrationEffect.createOneShot(durationMs, amplitude));
-		} else {
-			vibrator.vibrate(durationMs);
-		}
-	}
-
-	private float getControllerAxisValue(MotionEvent event, int axis) {
-		InputDevice device = event.getDevice();
-		if (device == null) {
-			return sanitizeControllerAxis(event.getAxisValue(axis), 0.0f);
-		}
-
-		InputDevice.MotionRange range = device.getMotionRange(axis, event.getSource());
-		float flat = range != null ? range.getFlat() : 0.0f;
-		return sanitizeControllerAxis(event.getAxisValue(axis), flat);
-	}
-
-	private float sanitizeControllerAxis(float value, float flat) {
-		if (Float.isNaN(value) || Float.isInfinite(value)) {
-			return 0.0f;
-		}
-		if (Math.abs(value) <= flat) {
-			return 0.0f;
-		}
-		float clamped = Math.max(-1.0f, Math.min(1.0f, value));
-		// Some Android controller stacks misbehave on exact endpoint values.
-		if (clamped >= 1.0f) {
-			clamped = 0.999f;
-		} else if (clamped <= -1.0f) {
-			clamped = -0.999f;
-		}
-		return clamped;
 	}
 
 	private float applyDeadZone(float input) {
@@ -1234,24 +765,6 @@ public class MainActivity extends Activity {
 	@Override
 	public boolean dispatchKeyEvent(KeyEvent event) {
 		int keyCode = event.getKeyCode();	
-		if (isMouseSource(event.getSource())) {
-			if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
-				if (event.getAction() == KeyEvent.ACTION_DOWN) {
-					if (gameState == GameState.COMPUTER) {
-						executeShell("HideComputer();");
-					} else if (gameState == GameState.MENU || gameState == GameState.CONSOLE) {
-						executeShell("GoMenuBack()");
-					} else if (gameState == GameState.NORMAL) {
-						executeShell("sam_bMenu=1;");
-					}
-				}
-				return true;
-			}
-			if (keyCode == KeyEvent.KEYCODE_FORWARD) {
-				return true;
-			}
-		}
-		boolean isController = isControllerSource(event.getSource());
 		if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
 			if (!useVolumeKeys) {
 				return false;			
@@ -1290,27 +803,15 @@ public class MainActivity extends Activity {
 
 				switch (keyCode) {
 					case KeyEvent.KEYCODE_DPAD_DOWN:
-						if (isController) {
-							vibrateController(event.getDeviceId(), CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-						}
 						executeShell("MenuEvent(" + VK_DOWN + ")");
 						break;
 					case KeyEvent.KEYCODE_DPAD_RIGHT:
-						if (isController) {
-							vibrateController(event.getDeviceId(), CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-						}
 						executeShell("MenuEvent(" + VK_RIGHT + ")");
 						break;
 					case KeyEvent.KEYCODE_DPAD_UP:
-						if (isController) {
-							vibrateController(event.getDeviceId(), CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-						}
 						executeShell("MenuEvent(" + VK_UP + ")");
 						break;
 					case KeyEvent.KEYCODE_DPAD_LEFT:
-						if (isController) {
-							vibrateController(event.getDeviceId(), CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-						}
 						executeShell("MenuEvent(" + VK_LEFT + ")");
 						break;
 					case KeyEvent.KEYCODE_MOVE_HOME:
@@ -1328,14 +829,11 @@ public class MainActivity extends Activity {
 					case KeyEvent.KEYCODE_ENTER:
 					case KeyEvent.KEYCODE_NUMPAD_ENTER:
 					case KeyEvent.KEYCODE_BUTTON_A:
-						resetMenuAxisState();
 						executeShell("MenuEvent(" + VK_RETURN + ")");
 						break;
 					case KeyEvent.KEYCODE_BUTTON_B:
-					case KeyEvent.KEYCODE_BUTTON_X:
 					case KeyEvent.KEYCODE_ESCAPE:
 					case KeyEvent.KEYCODE_BACK:
-						resetMenuAxisState();
 						executeShell("GoMenuBack()");
 						break;
 					case KeyEvent.KEYCODE_F1:
@@ -1390,90 +888,18 @@ public class MainActivity extends Activity {
 				}
 			}
 		} else if (gameState == GameState.COMPUTER) {
-			if (event.getAction() == KeyEvent.ACTION_DOWN) {
-				switch (keyCode) {
-					case KeyEvent.KEYCODE_DPAD_UP:
-						if (isController) {
-							vibrateController(event.getDeviceId(), CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-						}
-						executeShell("ComputerEvent(" + VK_UP + ")");
-						return true;
-					case KeyEvent.KEYCODE_DPAD_DOWN:
-						if (isController) {
-							vibrateController(event.getDeviceId(), CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-						}
-						executeShell("ComputerEvent(" + VK_DOWN + ")");
-						return true;
-					case KeyEvent.KEYCODE_DPAD_LEFT:
-						if (isController) {
-							vibrateController(event.getDeviceId(), CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-						}
-						executeShell("ComputerEvent(" + VK_LEFT + ")");
-						return true;
-					case KeyEvent.KEYCODE_DPAD_RIGHT:
-						if (isController) {
-							vibrateController(event.getDeviceId(), CONTROLLER_MENU_VIBRATION_MS, CONTROLLER_MENU_VIBRATION_AMPLITUDE);
-						}
-						executeShell("ComputerEvent(" + VK_RIGHT + ")");
-						return true;
-					case KeyEvent.KEYCODE_BUTTON_A:
-						resetMenuAxisState();
-						executeShell("ComputerEvent(" + VK_RETURN + ")");
-						return true;
-					case KeyEvent.KEYCODE_BACK:
-					case KeyEvent.KEYCODE_BUTTON_B:
-					case KeyEvent.KEYCODE_BUTTON_X:
-						resetMenuAxisState();
-						executeShell("HideComputer();");
-						return true;
-				}
-			}
-		} else if (gameState == GameState.INTRO) {
-			if (event.getRepeatCount() == 0
-					&& event.getAction() == KeyEvent.ACTION_DOWN
-					&& keyCode == KeyEvent.KEYCODE_BUTTON_A) {
-				executeShell("TouchUp(0, 0);");
-				return true;
+			if (event.getRepeatCount() == 0 && event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
+				executeShell("HideComputer();");
 			}
 		} else if (gameState != GameState.INTRO) {
 			if (event.getRepeatCount() == 0) {
 				if (event.getAction() == KeyEvent.ACTION_DOWN) {
-					if (keyCode == KeyEvent.KEYCODE_MENU) {
-						executeShell("sam_bMenu=1;");
-						return true;
-					}
-					if (isController) {
-						if (keyCode == controllerPauseKeyCode) {
-							executeShell("sam_bMenu=1;");
-							return true;
-						}
-						if (dispatchControllerAction(keyCode, true, event.getDeviceId())) {
-							return true;
-						}
-						if (GamepadBindings.isAssignableKeyCode(keyCode)) {
-							return true;
-						}
-					}
 					if (keyCode == KeyEvent.KEYCODE_ESCAPE) {
 						executeShell("sam_bMenu=1;");
 					}
 					nDispatchKeyEvent(keyCode, 1);
 				}
 				if (event.getAction() == KeyEvent.ACTION_UP) {
-					if (keyCode == KeyEvent.KEYCODE_MENU) {
-						return true;
-					}
-					if (isController) {
-						if (keyCode == controllerPauseKeyCode) {
-							return true;
-						}
-						if (dispatchControllerAction(keyCode, false, event.getDeviceId())) {
-							return true;
-						}
-						if (GamepadBindings.isAssignableKeyCode(keyCode)) {
-							return true;
-						}
-					}
 					nDispatchKeyEvent(keyCode, 0);
 				}
 			}
@@ -1488,11 +914,13 @@ public class MainActivity extends Activity {
 	@Override
 	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 		if (requestCode == REQUEST_WRITE_STORAGE) {
-			if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+			if (grantResults.length > 0) {
+				if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 				Log.wtf(TAG,"Permission is granted");
-				startGame();
-			} else {
-				finish();
+					startGame();
+				} else {
+					finish();
+				}
 			}
 		}
 	}
@@ -1750,11 +1178,7 @@ public class MainActivity extends Activity {
 		super.onWindowFocusChanged(hasFocus);
 		if (hasFocus) {
 			updateSoftKeyboardVisible();
-		} else {
-			releaseMouseButtons();
-			resetMouseMotionState();
 		}
-		updateMouseCaptureState();
 	}
 
 	private void startGame() {
@@ -1789,7 +1213,6 @@ public class MainActivity extends Activity {
 		useVolumeKeys = preferences.getBoolean("useVolumeKeys", false);
 		volumeUpKey = preferences.getString("volumeUpAction", "PrevWeapon");
 		volumeDownKey = preferences.getString("volumeDownAction", "NextWeapon");
-		reloadControllerBindings(preferences);
 		transparency = preferences.getInt("input_opacity", 50) * 255 / 100;
 		DinamicUI();
 		drawBanner();
@@ -1918,5 +1341,4 @@ public class MainActivity extends Activity {
 	private static native void nTouchKeyEvent(String key, int isPressed);
 	private static native void nConfirmEditText(String newText);
 	private static native void nCancelEditText();
-	private static native void nSendMouseNative(int buttonState, int action, float scroll);
 }

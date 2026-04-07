@@ -41,7 +41,7 @@ def getSigningInfo() {
                     keyPassword KEY_PASSWORD.trim()
                     storeFile file(STORE_FILE.trim())
                     storePassword STORE_PASSWORD.trim()
-                    v2SigningEnabled true
+                    v2SigningEnabled false
                 }
             }
         }
@@ -63,7 +63,7 @@ def getSigningInfo() {
                     keyPassword props['KEY_PASSWORD'].trim()
                     storeFile file(props['STORE_FILE'].trim())
                     storePassword props['STORE_PASSWORD'].trim()
-                    v2SigningEnabled true
+                    v2SigningEnabled false
                 }
             }
         }
@@ -106,11 +106,10 @@ android {
 		dependsOn 'copyH3DLibs64', 'copyH3DLibs32'
 	}
 
-    compileSdkVersion 33
+    compileSdkVersion 30
     defaultConfig {
         applicationId "com.github.aarcangeli.serioussamandroid"
         minSdkVersion 24
-        targetSdkVersion 33
         versionCode ver.versionCode
         versionName ver.version
         setProperty("archivesBaseName", "SeriousSamAndroid-v$versionName")

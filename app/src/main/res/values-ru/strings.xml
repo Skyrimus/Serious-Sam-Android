@@ -1,6 +1,0 @@
-<resources>
-	<string name="notification_channel_name">Анонсы</string>
-	<string name="notification_channel_desc">Новости и обновления игры</string>
-	<string name="notification_title">Serious Sam VR Port от Skyrimus</string>
-	<string name="notification_text">Классические Serious Sam TFE/TSE что вы установили скоро выйдут в VR!\n\nПодписывайтесь на Telegram, чтобы следить за новостями.\n\nНажмите, чтобы открыть Telegram канал разработчика VR версии Serious Sam Classic</string>
-</resources>
